@@ -1,0 +1,35 @@
+This file documents changes to the files of the standalone framework
+that were required because of the needs of the baseline OS.
+
+Makefile
+--------
+
+The Makefile was updated to include all the files comprising the baseline
+OS, to document the debugging options that are available via CPP macros
+defined on the compilation command line, and to make use of the Offsets
+program to generate the offsets.h header file.
+
+The Makefile also has a transformation rule for doing preprocessing only
+for C files.  Use "make prog.i" to convert 'prog.c' into 'prog.i'.
+
+cio.c
+-----
+
+The only change is the addition of an optional trace message to the
+__c_keyboard_isr() function.  If the CONSOLE tracing option is on (see
+kdefs.h and the Makefile for details), each interrupt from the console
+keyboard will cause a tracing message to be printed to the console
+monitor.
+
+isr_stubs.S
+-----------
+
+Code was added following the context save (at isr_save) to copy %esp into
+the context field of the current PCB, and to then switch to a system
+stack.
+
+Similarly, code was added immediately before the context restore to
+switch back to the user stack by retrieving %esp from the context field
+of the current PCB.  Additionally, another line of trace output
+containing the current system time and the PID and PPID of the current
+process was added to the TRACE_CX output.

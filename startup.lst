@@ -1,0 +1,128 @@
+GAS LISTING startup.s 			page 1
+
+
+   1              	# 1 "startup.S"
+   1              	/*
+   0              	
+   0              	
+   2              	** SCCS ID:	@(#)startup.S	2.3	3/16/23
+   3              	**
+   4              	** File:	startup.S
+   5              	**
+   6              	** Author:	Jon Coles
+   7              	**
+   8              	** Contributor:	Warren R. Carithers, K. Reek
+   9              	**
+  10              	** Description:	SP startup code.
+  11              	**
+  12              	** This code prepares the various registers for execution of
+  13              	** the program.  It sets up all the segment registers and the
+  14              	** runtime stack.  By the time this code is running, we're in
+  15              	** protected mode already.
+  16              	*/
+  17              		.arch	i386
+  18              	
+  19              	#include "bootstrap.h"
+   1              	/*
+  20              	
+  21              	/*
+  22              	** Configuration options - define in Makefile
+  23              	**
+  24              	**	CLEAR_BSS	include code to clear all BSS space
+  25              	**	SP_CONFIG	enable SP OS-specific startup variations
+  26              	*/
+  27              	
+  28              	/*
+  29              	** A symbol for locating the beginning of the code.
+  30              	*/
+  31              		.globl begtext
+  32              	
+  33              		.text
+  34              	begtext:
+  35              	
+  36              	/*
+  37              	** The entry point.
+  38              	*/
+  39              		.globl	_start
+  40              	
+  41              	_start:
+  42 0000 FA       		cli			/* seems to be reset on entry to p. mode */
+  43 0001 B000     		movb	$0x00, %al	/* re-enable NMIs (bootstrap */
+  44 0003 E670     		outb	$0x70		/*   turned them off) */
+  45              	
+  46              	/*
+  47              	** Set the data and stack segment registers (code segment register
+  48              	** was set by the long jump that switched us into protected mode).
+  49              	*/
+  50 0005 31C0     		xorl	%eax, %eax	/* clear EAX */
+  51 0007 66B81800 		movw	$GDT_DATA, %ax	/* GDT entry #3 - data segment */
+  52 000b 8ED8     		movw	%ax, %ds	/* for all four data segment registers */
+  53 000d 8EC0     		movw	%ax, %es
+GAS LISTING startup.s 			page 2
+
+
+  54 000f 8EE0     		movw	%ax, %fs
+  55 0011 8EE8     		movw	%ax, %gs
+  56              	
+  57 0013 66B82000 		movw	$GDT_STACK, %ax	/* entry #4 is the stack segment */
+  58 0017 8ED0     		movw	%ax, %ss
+  59              	
+  60 0019 BD000001 		movl	$TARGET_STACK, %ebp	/* set up the system frame pointer */
+  60      00
+  61 001e 89EC     		movl	%ebp, %esp	/* and stack pointer */
+  62              	
+  63              	#ifdef CLEAR_BSS
+  64              	/*
+  65              	** Zero the BSS segment
+  66              	**
+  67              	** These symbols are defined automatically by the linker.
+  68              	*/
+  69              		.globl	__bss_start, _end
+  70              	
+  71 0020 BF000000 		movl	$__bss_start, %edi
+  71      00
+  72              	clearbss:
+  73 0025 C7070000 		movl	$0, (%edi)
+  73      0000
+  74 002b 83C704   		addl	$4, %edi
+  75 002e 81FF0000 		cmpl	$_end, %edi
+  75      0000
+  76 0034 72EF     		jb	clearbss
+  77              	
+  78              	#endif
+  79              	
+  80              	#ifdef SP_CONFIG
+  81              	
+  82              	/*
+  83              	** Configuration for the baseline OS in the SP course.
+  84              	**
+  85              	** Call the OS initialization routine.
+  86              	*/
+  87              		.globl	_kinit
+  88 0036 E8FCFFFF 		call	_kinit
+  88      FF
+  89              	
+  90              	/*
+  91              	** Restore the first user process context.
+  92              	**
+  93              	** At this point, _kinit() must have created the first user
+  94              	** process, and we're ready to shift into user mode.  The user
+  95              	** stack for that process must have the initial context in it;
+  96              	** we treat this as a "return from interrupt" event, and just
+  97              	** transfer to the code that restores the user context.
+  98              	*/
+  99 003b E9FCFFFF 		jmp	__isr_restore   // defined in isr_stubs.S
+  99      FF
+GAS LISTING startup.s 			page 3
+
+
+DEFINED SYMBOLS
+           startup.S:34     .text:0000000000000000 begtext
+           startup.S:41     .text:0000000000000000 _start
+           startup.S:72     .text:0000000000000025 clearbss
+
+UNDEFINED SYMBOLS
+__bss_start
+_end
+_kinit
+__isr_restore

@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# Run qemu-system-i386 on the baseline OS
+#
+
+#
+# use curses and tinfo libraries from 18.04 (main-net only)
+#
+# export LD_LIBRARY_PATH=/home/fac/wrc/lib/u1804
+
+#
+# other options:
+#	-nographic
+#	-display gtk
+#
+
+#
+# QEMU binary location varies between systems
+#
+
+DSL=/usr/local/dcs/bin/qemu-system-i386
+MAIN=/home/course/csci352/bin/qemu-system-i386
+
+exec $DSL \
+	-serial mon:stdio \
+	-drive file=usb.img,index=0,media=disk,format=raw

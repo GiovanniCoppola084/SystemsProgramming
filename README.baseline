@@ -1,0 +1,223 @@
+This file describes some of the things that may be less obvious about how
+the baseline OS is organized and operates.  Changes that were made to the
+framework and its support functions are described in the "README.mods" file.
+
+The baseline is designed to run in protected ("IA32") mode.  This means
+that the sizes of 'int', 'long int', and pointer values are all 32 bits.
+The code relies on this in many, many places, both in terms of data
+structure declarations (e.g., the PCB is 32 bytes long) and things like
+parameter passing and return value mechanisms.  If the system is modified
+to run in "long mode", LOTS of things will have to change.
+
+Utility Programs
+----------------
+
+The Offsets.c source file contains a program which will print out the
+sizes of all the important system types in the baseline system, along
+with byte offsets to each field in several important data types (Pcb,
+Entry, Vector, and Context).  If run as "./Offsets -h", it will create a
+file named "offsets.h" with CPP macro definitions for each of these
+values; this is suitable for including into assembly source files to make
+the sizes and field offsets available to assembly code. See the
+"isr_stubs.S" file for examples.
+
+The Makefile is set up to automatically compile and run this program when
+any of the important data structure header files have changed.
+
+Processes
+---------
+
+The 'processes' module defines two critical data structures:  Pcb and
+Context.  Both are globally visible.
+
+Process states are defined in an enumerated type, and are (roughly)
+grouped into three clusters based on the internal state values; the
+clusters indicate general process status, as follows (state values appear
+in parentheses here):
+
+	pre-viable (0, 1):   Unused, New
+	active (2-6):	     Ready, Running, Sleeping, Waiting, Blocked
+	inactive (7, 8):     Zombie, Killed
+
+States with values < 'Ready' are pre-viable; those with values > 'Blocked'
+are inactive.  The symbol N_STATES is automatically defined with a value
+equal to the number of states declared in the enum (9, in the list above),
+and can be used to dimension arrays or control loops that iterate through
+all states.
+
+Similarly, process priorities are defined in an enum.  It is found in
+the "common.h" header file, as priority values must be visible to user
+processes as well as to the OS.  They define the levels in the MLQ
+scheduling structure:
+
+	System (0), User (1), Deferred (2)
+
+The symbol N_PRIOS is automatically defined as the number of priority
+values (3, in this case).
+
+Critical process variables defined in this module:
+
+	_nextPid	the next available PID
+	_nProcs		number of currently active processes
+	_activeProcs	the table of active processes
+
+The active table is dimensioned with the symbol MAX_PROCS, defined in
+"common.h" as the maximum number of simultaneous user processes the
+system will hold.
+
+The initial user process has PID 1; other user PIDs begin at 2.  The init
+process is tracked with a global variable named _initPcb in the 'kernel'
+module, which points to its PCB.
+
+The first process started by 'init' is the system idle process.  This
+process runs with a Deferred priority, and is only dispatched when there
+is no other process in the ready queue.
+
+Queues
+------
+
+The Queue data structure is opaque to the OS at large.  There are three
+Queues defined in the baseline system:
+
+	_sleepQueue	sleeping processes; defined in 'syscalls'
+	_readyQueue	ready-to-execute processes; defined in 'sched'
+	_sioReadQueue	processes blocked on SIO input; defined in 'sio'
+
+Notably, processes in the Zombie and Waiting states are not actually
+placed on queues; instead, the process table is searched when these need
+to be located.  This reduces overhead a bit.
+
+Queues are self-ordering.  When created, a Queue can have an "ordering"
+function associated with it; this is used to determine the ordering
+relationship between two entries in the Queue when ordered insertion is
+desired.  If this is not specified, the Queue is treated as a FIFO list.
+
+One data structure defined in the 'queue' module that is visible globally
+is the Payload.  This structure allows queue routines to return both the
+key and data values that are associated with a queue entry when both are
+needed.
+
+Clock
+-----
+
+The system clock (PIT timer #0) ticks at 1000Hz.  The clock ISR is
+responsible for running the "pinwheel" in the upper-left corner of the
+console monitor, for handling quantum expiration, and for waking up
+sleeping processes whose wakeup times have arrived.
+
+Sched
+-----
+
+The scheduler operates a MLQ structure, with queue levels defined by
+process priorities; each queue level is a FIFO list.  The dispatcher
+removes the highest-priority process found in the MLQ structure.
+
+Syscalls
+--------
+
+The baseline system supports seven system calls: exit, spawn, read,
+write, sleep, kill, and waitpid.  There is an additional "bogus" system
+call code defined to allow testing of the syscall ISR, to make sure it
+handles 'bad' system call codes properly.
+
+System calls are implemented using the standard 32-bit ABI:  parameters
+are pushed onto the stack in reverse order as longwords; a code
+indicating which syscall is being made is placed into %eax; and an 'int'
+instruction is executed to cause the syscall interrupt.
+
+Adding a system call requires the following actions:
+
+	* add its code (SYS_name) in syscalls.h, remembering to update
+	  the N_SYSCALLS macro
+
+	* add its implementation (_sys_name()) to syscalls.c
+
+	* add code to initialize its entry in the syscall table to the
+	  _sys_init() function in syscalls.c:
+
+		_syscalls[ SYS_name ] = _sys_name;
+
+	* add a line to the ulibs.S file to defined the syscall library
+	  stub function:
+
+		SYSCALL(name)
+
+	* add a prototype to the ulib.h header file - e.g., for a
+	  syscall that takes no parameters and returns no result:
+
+		void name( void );
+
+Added Functionality
+-------------------
+
+Several features beyond the ones discussed or created in class were
+added to simplify some aspects of managing the system.  Here is a brief
+description of them.
+
+   syscalls.c, syscalls.h, ulibs.S, ulib.h:
+	ushell() syscall - registers this process as the "user shell"
+	process; when the 'u' key is pressed on the console keyboard,
+	this process is awakened and scheduled.
+
+	_sys_sleep() was modified to recognize when the user shell
+	calls sleep() and to not actually put it on the sleep queue
+
+   kernel.c, kernel.h: support functions
+	_kpanic() is a frontend to the framework's __panic() function;
+	it prints a header, dumps some information to the console, and
+	then calls __panic()
+
+	_kshell() is a "kernel shell" function.  It is registered as
+	a callback routine when CIO is initialized; whenever a key is
+	pressed on the console keyboard, it is passed to the _kshell()
+	function, which will interpret it.  If the key is 'u', _kshell()
+	will schedule the current user shell process (if there is one).
+
+   processes.c, processes.h: support functions
+	_performExit() does the actual work required for processes to
+	exit or to be killed
+
+	_pcount() places counts of the number of processes in each
+	process state into an array given as a parameter
+
+	_pcb_cleanup() performs the final cleanup of PCB and stack for
+	a process that has terminated
+
+   	_pcb_dump() prints the contents of a PCB to the console
+
+	_ctx_dump() prints the contents of a Context to the console
+
+	_ctx_dump_all() dumps the Contexts for all active processes
+
+	_ptable_dump() dumps the contents of the active process table
+
+   stacks.c, stacks.h
+   	_stk_dump() dumps all or a portion of the supplied Stack to
+	the console
+
+Userland
+--------
+
+A number of user processes are defined in addition to the init() and
+idle() processes.  See users.h for a matrix showing which user functions
+test what aspects of the baseline OS.  Individual user processes are
+configured to run by definining their "SPAWN_name" symbols in users.h;
+e.g., define SPAWN_A to configure the system to spawn userA().
+
+In addition to these user processes, a user shell was added.  It is
+spawned by init() if the USER_SHELL macro is defined in the Makefile,
+running at System priority.
+
+When it starts, it registers itself as the "user shell" process, and then
+puts itself to sleep for one week (604,800 seconds).  However, the sleep()
+implementation recognizes this process, and doesn't actually put it on
+the sleep queue; instead, it is only marked as sleeping.
+
+When the 'u' key is pressed on the console keyboard, the _kshell()
+function awakens the user shell and schedules it; because it runs at
+System priority, it will be the next thing dispatched.
+
+When dispatched, the shell loops reading single characters from the SIO
+(*not* the console) and spawning user test programs.  When it reads
+the character 'x', it will put itself back to sleep until the next 'u'
+character is typed on the console keyboard.

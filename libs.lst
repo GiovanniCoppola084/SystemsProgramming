@@ -1,0 +1,167 @@
+GAS LISTING libs.s 			page 1
+
+
+   1              	# 1 "libs.S"
+   1              	/*
+   0              	
+   0              	
+   2              	** SCCS ID:	@(#)libs.S	2.2	11/29/22
+   3              	**
+   4              	** @file libs.S
+   5              	**
+   6              	** @author Jon Coles
+   7              	** @author Warren R. Carithers
+   8              	** @author K. Reek
+   9              	**
+  10              	** Support library functions (assembly language)
+  11              	**
+  12              	** These functions are support routines used in various places
+  13              	** throughout the framework.  They are written in assembly language
+  14              	** for efficiency and/or because they require access to machine-level
+  15              	** features that are hard to access from C.
+  16              	*/
+  17              	
+  18              	/*
+  19              	** Parameter offsets
+  20              	*/
+  21              	ARG1	= 8			// Offset to 1st argument
+  22              	ARG2	= 12			// Offset to 2nd argument
+  23              	
+  24              	/**
+  25              	** Name:	__inb, __inw, __inl
+  26              	**
+  27              	** Description: read a single byte, word, or longword from the specified
+  28              	**		input port
+  29              	**
+  30              	** usage:  data = __in*( unsigned short port );
+  31              	**
+  32              	** @param port   The port from which to read
+  33              	**
+  34              	** @return The data from that port
+  35              	*/
+  36              		.globl	__inb, __inw, __inl
+  37              	
+  38              	__inb:
+  39 0000 C8000000 		enter	$0,$0
+  40 0004 31C0     		xorl	%eax,%eax	// Clear the high order bytes of %eax
+  41 0006 8B5508   		movl	ARG1(%ebp),%edx	// Move port number to %edx
+  42 0009 EC       		inb	(%dx)		// Get a byte from the port into %al (low
+  43 000a C9       		leave			//   byte of %eax)
+  44 000b C3       		ret
+  45              	__inw:
+  46 000c C8000000 		enter	$0,$0
+  47 0010 31C0     		xorl	%eax,%eax	// Clear the high order bytes of %eax
+  48 0012 8B5508   		movl	ARG1(%ebp),%edx	// Move port number to %edx
+  49 0015 66ED     		inw	(%dx)		// Get a word from the port into %ax (low
+  50 0017 C9       		leave			//   word of %eax)
+  51 0018 C3       		ret
+  52              	__inl:
+  53 0019 C8000000 		enter	$0,$0
+  54 001d 31C0     		xorl	%eax,%eax	// Clear the high order bytes of %eax
+GAS LISTING libs.s 			page 2
+
+
+  55 001f 8B5508   		movl	ARG1(%ebp),%edx	// Move port number to %edx
+  56 0022 ED       		inl	(%dx)		// Get a longword from the port into %eax
+  57 0023 C9       		leave
+  58 0024 C3       		ret
+  59              		
+  60              	/**
+  61              	** Name:	__outb, __outw, __outl
+  62              	**
+  63              	** Description: write a single byte, word, or longword to the specified
+  64              	**		output port
+  65              	**
+  66              	** usage:  __out*( unsigned short port, unsigned data );
+  67              	**
+  68              	** @param port   The port to be written to
+  69              	** @param data   The data to write to that port
+  70              	*/
+  71              		.globl	__outb, __outw, __outl
+  72              	__outb:
+  73 0025 C8000000 		enter	$0,$0
+  74 0029 8B5508   		movl	ARG1(%ebp),%edx	// Get the port number into %edx,
+  75 002c 8B450C   		movl	ARG2(%ebp),%eax	//   and the value into %eax
+  76 002f EE       		outb	(%dx)		// Output that byte to the port
+  77 0030 C9       		leave			//   (only %al is sent)
+  78 0031 C3       		ret
+  79              	__outw:
+  80 0032 C8000000 		enter	$0,$0
+  81 0036 8B5508   		movl	ARG1(%ebp),%edx	// Get the port number into %edx,
+  82 0039 8B450C   		movl	ARG2(%ebp),%eax	//   and the value into %eax
+  83 003c 66EF     		outw	(%dx)		// Output that word to the port.
+  84 003e C9       		leave			//   (only %ax is sent)
+  85 003f C3       		ret
+  86              	__outl:
+  87 0040 C8000000 		enter	$0,$0
+  88 0044 8B5508   		movl	ARG1(%ebp),%edx	// Get the port number into %edx,
+  89 0047 8B450C   		movl	ARG2(%ebp),%eax	//   and the value into %eax
+  90 004a EF       		outl	(%dx)		// Output that longword to the port.
+  91 004b C9       		leave
+  92 004c C3       		ret
+  93              	
+  94              	/**
+  95              	** Name:    __get_flags
+  96              	**
+  97              	** Description: Get the current processor flags
+  98              	**
+  99              	** @return The EFLAGS register after entry to this function
+ 100              	*/
+ 101              		.globl	__get_flags
+ 102              	
+ 103              	__get_flags:
+ 104 004d 9C       		pushfl			// Push flags on the stack,
+ 105 004e 58       		popl	%eax		//   and pop them into eax.
+ 106 004f C3       		ret
+ 107              	
+ 108              	/**
+ 109              	** Name:    __pause
+ 110              	**
+ 111              	** Description: Pause until something happens
+GAS LISTING libs.s 			page 3
+
+
+ 112              	*/
+ 113              		.globl	__pause
+ 114              	
+ 115              	__pause:
+ 116 0050 C8000000 		enter	$0,$0
+ 117 0054 FB       		sti
+ 118 0055 F4       		hlt
+ 119 0056 C9       		leave
+ 120 0057 C3       		ret
+ 121              	
+ 122              	/**
+ 123              	** __get_ra:
+ 124              	**
+ 125              	** Description: Get the return address for the calling function
+ 126              	**              (i.e., where whoever called us will go back to)
+ 127              	**
+ 128              	** @return The address the calling routine will return to as a uint32_t
+ 129              	*/
+ 130              		.global	__get_ra
+ 131              	
+ 132              	__get_ra:
+ 133              		// DO NOT create a stack frame - use the caller's
+ 134              		//
+ 135              		// Caller's return address is between the saved EBP
+ 136              		// and its first parameter
+ 137 0058 8B4504   		movl	4(%ebp), %eax
+ 138 005b C3       		ret
+GAS LISTING libs.s 			page 4
+
+
+DEFINED SYMBOLS
+              libs.S:21     *ABS*:0000000000000008 ARG1
+              libs.S:22     *ABS*:000000000000000c ARG2
+              libs.S:38     .text:0000000000000000 __inb
+              libs.S:45     .text:000000000000000c __inw
+              libs.S:52     .text:0000000000000019 __inl
+              libs.S:72     .text:0000000000000025 __outb
+              libs.S:79     .text:0000000000000032 __outw
+              libs.S:86     .text:0000000000000040 __outl
+              libs.S:103    .text:000000000000004d __get_flags
+              libs.S:115    .text:0000000000000050 __pause
+              libs.S:132    .text:0000000000000058 __get_ra
+
+NO UNDEFINED SYMBOLS
