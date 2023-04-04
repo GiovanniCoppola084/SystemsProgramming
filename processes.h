@@ -109,6 +109,7 @@ typedef struct pcb_s {
 
     int32_t status;     // termination status, for parent's use
     uint32_t wakeup;    // wakeup time for this process when sleeping
+    uint32_t working_directory; // working the directoy the user is in when they boot up the file system
 
     // two-byte values
 
@@ -123,7 +124,8 @@ typedef struct pcb_s {
 
     // filler, to round us up to 32 bytes
     // adjust this as fields are added/removed/changed
-    uint8_t filler[9];
+    uint8_t filler[5];
+    //uint8_t filler[9];
 
 } Pcb;
 
