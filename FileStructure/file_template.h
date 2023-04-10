@@ -12,6 +12,8 @@
 ** https://github.com/v7unix/v7unix
 ** https://www.tuhs.org/cgi-bin/utree.pl?file=V7
 ** https://github.com/darshank15/Inode-based-file-system/blob/master/inode.h
+** https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/include/sys
+** https://www3.nd.edu/~pbui/teaching/cse.30341.fa18/project06.html
 */
 
 #ifndef _FILE_TEMPLATE_H_
@@ -21,75 +23,81 @@
 #include "users.h"
 #include "ulib.h"
 
+#define DATA_BLOCK_SIZE 64
+
 /**
-* Structure for a file. It will contain a name and contents.
-*
-* @param filename - The start of a file name (first 14 characters)
-* @param node_entry - The last 2 bytes of the file name to signify what position in the directory it is
-* @param contents - 47 bytes the user is limited to using. If the user goes over, it will be truncated
+* 0 needs to be the root index for an inode
+*/
+
+typedef struct inode_s {
+    // Needs to contain a list of what is within the directory
+    // This is where block pointers are
+    // File or direc?
+    uint16_t i_nlink;
+    uint32_t i_size;
+    uint32_t i_number;
+    unsigned char i_count;
+} Inode_s; // 11 bytes
+
+extern struct Ilist_s inode_s[]; // We want total number of Inodes to be disk size / address size (address?)
+
+typedef struct filesys {
+    uint16_t s_isize;
+    uint16_t s_ninode;
+    uint32_t s_inode[128]; // Free i-node list?
+    uint32_t s_tinode; // Total i-nodes
+    char s_fname[16]; // 16 characters for the file name
+} Filesys_s; // 28 bytes
+
+/**
+* 64 bytes in total for the size of the file, where 48 bytes is the data in the file
 */
 typedef struct file_s {
-    unsigned char filename[14]; // Beginning of name
-    unsigned char node_entry[2]; // End of name where the entry specifies which numebr in the directory it is
-    // 'r' - represent read-only
-    // 'w' - read and write
-    unsigned char attributes; // Two digit hex number that will represent the permmissions
-    unsigned char contents[47]; // Truncate bytes if go over 47, so the struct caps on 64 bytes total
+    /*unsigned char name[14]; // Name of the file
+    unsigned char entry[2]; // Entry number into the inode
+    unsigned char data[48]; // Data block*/
+    struct inode_s *f_inode;
+    unsigned char datablock[DATA_BLOCK_SIZE];
+    unsigned char f_count;
+} File_s; // 73 bytes
+
+extern struct file_s file[]; // File table
+
+struct direct {
+    uint32_t d_ino;
+    unsigned char d_name[DATA_BLOCK_SIZE]; // What is directory size?
+};
+
+/* Separate two different implementations */
+
+typedef struct SuperBlock_s {
+    uint32_t magic_number; // Do I need this?
+    uint32_t num_of_inodes; // Number of i-nodes in the system
+} SuperBlock_s;
+
+typedef struct Inode_s {
+    uint32_t size;
+    unsigned char name[16];
+    uint32_t direct[12]; // 12 direct pointers per i-node
+    uint32_t indirect; // Indirect pointer
+} Inode_s;
+
+typedef struct File_s {
+    SuperBlock_s super;
+    Inode_s inodes[16]; // 16 i-node pointers per block
+    uint32_t pointers[128]; // 64 pointers per block
+    unsigned char data_block[DATA_BLOCK_SIZE]; // 64 bytes per data block
 } File_s;
 
-/**
-* Structure for a directory. It will contain the directory name, number of contents in the directory, and 
-*   a list of pointers for the directories and files in the current one.
-*
-* @param directory_name - 16 bytes for the directory name
-* @param number_of_contents - the number of contents in the current directory (including files and subdirectories)
-* @param files_and_or_directories - the pointer array for the files and subdirectories in the current directory
-*/
-typedef struct directory_s {
-    unsigned char directory_name[15];
-    unsigned char type; // 'f' means file and 'd' means directory
-    uint32_t number_of_contents;
-    void* files_and_or_directories[20]; // Hard cap so if they go over 20 files/directories, blow up
-} Directory_s;
+typedef struct FileSystem_s {
+    uint32_t fd;
+    uint32_t blocks; // Number of blocks
+} FileSystem_s;
 
-Directory_s working;
-File_s file = (File_s) working.file_and_or_directories[1];
-
-/**
-* Allocate a directory block. This will be a slice.
-*/
-Directory_s allocate_directory (void);
-/**
-* Allocate a file block. This will be the size of a file. (48 bytes right now)
-*/
-File_s allocate_file (void);
-
-/**
-* Create file. Set command line args for permission and name
-*/
-File_s create_file (uint32_t working_directory, uint16_t node_entry);
-
-/**
-* Create directory. Do similar to file with command line args
-*/
-Directory_s create_directory ();
-
-/**
-* Read a file. Return a byte array the file contains
-*/
-char[] read_file (struct File_s);
-/**
-* Write to a file. This will prompt the user on the terminal to enter 32 bytes at most
-*/
-void write_file (struct File_s, char[] input);
-
-/**
-* Free a file when it is done being used.
-*/
-void free_file_s (struct File_s);
-/**
-* Free a directory when it is done being used
-*/
-void free_directory_s (struct Directory_s);
+uint16_t create_file_system (FileSystem_s *fs);
+void delete_file_system (FileSystem_s *fs, uint32_t inode_number);
+void inode_size (FileSystem_s *fs, uint32_t inode_number);
+void inode_read (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
+void inode_write (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
 
 #endif
