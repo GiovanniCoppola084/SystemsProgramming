@@ -71,28 +71,31 @@ struct direct {
 /* Separate two different implementations */
 
 typedef struct SuperBlock_s {
-    uint32_t magic_number; // Do I need this?
     uint32_t num_of_inodes; // Number of i-nodes in the system
-} SuperBlock_s;
+} SuperBlock_s; // 4 bytes
 
 typedef struct Inode_s {
     uint32_t size;
-    unsigned char name[16];
     uint32_t direct[12]; // 12 direct pointers per i-node
-    uint32_t indirect; // Indirect pointer
-} Inode_s;
+    uint32_t singly_indirect; // Indirect pointer
+    uint32_t doubly_indirect;
+    uint16_t num_of_pointers;
+} Inode_s; // 18 bytes
 
 typedef struct File_s {
-    SuperBlock_s super;
+    unsigned char name[16];
     Inode_s inodes[16]; // 16 i-node pointers per block
     uint32_t pointers[128]; // 64 pointers per block
     unsigned char data_block[DATA_BLOCK_SIZE]; // 64 bytes per data block
-} File_s;
+} File_s; // 28 bytes
 
 typedef struct FileSystem_s {
+    SuperBlock_s super;
     uint32_t fd;
     uint32_t blocks; // Number of blocks
-} FileSystem_s;
+    uint32_t inode_pointers[128];
+    unsigned char padding[4];
+} FileSystem_s; // 514 bytes
 
 uint16_t create_file_system (FileSystem_s *fs);
 void delete_file_system (FileSystem_s *fs, uint32_t inode_number);
