@@ -23,84 +23,75 @@
 #include "users.h"
 #include "ulib.h"
 
-#define DATA_BLOCK_SIZE 64
+#define TOTAL_NUM_BLOCKS 368426240
+#define TOTAL_NUM_NODE 512
+#define INODES_PER_FILE 128
+#define DATA_BLOCK_SIZE 512
 
-/**
-* 0 needs to be the root index for an inode
-*/
+//*********************************************************************************************************************
+//Separate two different implementations 
+//*********************************************************************************************************************
 
-typedef struct inode_s {
-    // Needs to contain a list of what is within the directory
-    // This is where block pointers are
-    // File or direc?
-    uint16_t i_nlink;
-    uint32_t i_size;
-    uint32_t i_number;
-    unsigned char i_count;
-} Inode_s; // 11 bytes
 
-extern struct Ilist_s inode_s[]; // We want total number of Inodes to be disk size / address size (address?)
-
-typedef struct filesys {
-    uint16_t s_isize;
-    uint16_t s_ninode;
-    uint32_t s_inode[128]; // Free i-node list?
-    uint32_t s_tinode; // Total i-nodes
-    char s_fname[16]; // 16 characters for the file name
-} Filesys_s; // 28 bytes
-
-/**
-* 64 bytes in total for the size of the file, where 48 bytes is the data in the file
-*/
-typedef struct file_s {
-    /*unsigned char name[14]; // Name of the file
-    unsigned char entry[2]; // Entry number into the inode
-    unsigned char data[48]; // Data block*/
-    struct inode_s *f_inode;
-    unsigned char datablock[DATA_BLOCK_SIZE];
-    unsigned char f_count;
-} File_s; // 73 bytes
-
-extern struct file_s file[]; // File table
-
-struct direct {
-    uint32_t d_ino;
-    unsigned char d_name[DATA_BLOCK_SIZE]; // What is directory size?
-};
-
-/* Separate two different implementations */
-
-typedef struct SuperBlock_s {
-    uint32_t num_of_inodes; // Number of i-nodes in the system
-} SuperBlock_s; // 4 bytes
+/*typedef struct SuperBlock_s {
+    uint32_t num_of_active_inodes;
+    uint32_t num_of_inactive_inodes;
+    uint32_t num_of_active_data_blocks;
+    uint32_t num_of_inactive_data_blocks; // Can I convert this to a linked list of free data blocks?
+    uint32_t magic_number; // This needs to be where it will start in memory
+    unsigned char name[4]; // GFS
+} SuperBlock_s; // 4 bytes*/
 
 typedef struct Inode_s {
     uint32_t size;
-    uint32_t direct[12]; // 12 direct pointers per i-node
-    uint32_t singly_indirect; // Indirect pointer
-    uint32_t doubly_indirect;
+    uint32_t direct[16]; // 16 pointers per i-node
     uint16_t num_of_pointers;
-} Inode_s; // 18 bytes
+    bool_t mode; // True for direct, false for indirect
+    unsigned char padding[1]; // 72 bytes
+} Inode_s;
 
 typedef struct File_s {
-    unsigned char name[16];
-    Inode_s inodes[16]; // 16 i-node pointers per block
-    uint32_t pointers[128]; // 64 pointers per block
-    unsigned char data_block[DATA_BLOCK_SIZE]; // 64 bytes per data block
-} File_s; // 28 bytes
+    unsigned char name[14];
+    unsigned char index[2]; // 2 bytes for the file name
+    uint32_t inodes[INODES_PER_FILE]; // 16 i-node pointers per block
+    unsigned char data_block[DATA_BLOCK_SIZE]; // 512 bytes per data block
+} File_s;
 
 typedef struct FileSystem_s {
-    SuperBlock_s super;
-    uint32_t fd;
-    uint32_t blocks; // Number of blocks
-    uint32_t inode_pointers[128];
-    unsigned char padding[4];
-} FileSystem_s; // 514 bytes
+    uint8_t num_free_blocks;
+    uint32_t free_blocks[TOTAL_NUM_BLOCKS]; // 368426240 total free blocks with the 1 Gb I will use
+    uint8_t num_free_nodes;
+    Inode_s free_nodes[TOTAL_NUM_NODE]; // 36,864 bytes taken up by Inodes in file system. 1,073,704,960 left from the one Gb I will use
+} FileSystem_s;
 
+/**
+* Create the file system by allocating a slab for the entire thing (since we limit to 128 inodes)
+*/
 uint16_t create_file_system (FileSystem_s *fs);
+
+/**
+* Delete the entire file system by freeing up the memory
+*/
 void delete_file_system (FileSystem_s *fs, uint32_t inode_number);
-void inode_size (FileSystem_s *fs, uint32_t inode_number);
+
+/**
+* Get the size of the inode present
+*/
+int inode_size (FileSystem_s *fs, uint32_t inode_number);
+
+/**
+* Get the inode by going into the list of inodes within the file system
+*/
+Inode_s* get_inode (FileSystem_s *fs, uint32_t inode_number);
+
+/**
+* Output what is in the file system to a data block
+*/
 void inode_read (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
+
+/**
+* Read what is in the data block to the file
+*/
 void inode_write (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
 
 #endif
