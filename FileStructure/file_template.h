@@ -23,24 +23,16 @@
 #include "users.h"
 #include "ulib.h"
 
+#define USERLAND_FILE_ADDRESS_START 0xC0000000
+#define USRELAND_FILE_ADDRESS_END 0xffffffff
+
+#define SIZE_OF_FILE_SYSTEM 0x10
+#define SIZE_OF_INODE 0x48 // 72 bytes
+#define SIZE_OF_FILE 0x320 // 560 bytes
 #define TOTAL_NUM_BLOCKS 368426240
 #define TOTAL_NUM_NODE 512
 #define INODES_PER_FILE 128
 #define DATA_BLOCK_SIZE 512
-
-//*********************************************************************************************************************
-//Separate two different implementations 
-//*********************************************************************************************************************
-
-
-/*typedef struct SuperBlock_s {
-    uint32_t num_of_active_inodes;
-    uint32_t num_of_inactive_inodes;
-    uint32_t num_of_active_data_blocks;
-    uint32_t num_of_inactive_data_blocks; // Can I convert this to a linked list of free data blocks?
-    uint32_t magic_number; // This needs to be where it will start in memory
-    unsigned char name[4]; // GFS
-} SuperBlock_s; // 4 bytes*/
 
 typedef struct Inode_s {
     uint32_t size;
@@ -52,17 +44,28 @@ typedef struct Inode_s {
 
 typedef struct File_s {
     unsigned char name[14];
-    unsigned char index[2]; // 2 bytes for the file name
+    unsigned char index[2]; // 2 bytes for the file index
     uint32_t inodes[INODES_PER_FILE]; // 16 i-node pointers per block
     unsigned char data_block[DATA_BLOCK_SIZE]; // 512 bytes per data block
 } File_s;
 
+// Don't want file system as struct
+// Data block is linked list that points to next
+// I can point into the next block of memory when I need it (first/last (doesn't matter which) 32 bits are pointer)
+// Take the first one off the free list when I need it
+// Add the new one to the top of the free list when I am done with it
 typedef struct FileSystem_s {
     uint8_t num_free_blocks;
-    uint32_t free_blocks[TOTAL_NUM_BLOCKS]; // 368426240 total free blocks with the 1 Gb I will use
     uint8_t num_free_nodes;
-    Inode_s free_nodes[TOTAL_NUM_NODE]; // 36,864 bytes taken up by Inodes in file system. 1,073,704,960 left from the one Gb I will use
 } FileSystem_s;
+
+uint32_t free_blocks[TOTAL_NUM_BLOCKS]; // 368426240 total free blocks with the 1 Gb I will use
+uint32_t free_nodes[TOTAL_NUM_NODE]; // 36,864 bytes taken up by Inodes in file system. 1,073,704,960 left from the one Gb I will use
+
+/**
+* Make an init function that will add the addresses to the free lists in the file system
+*/
+Filesystem_s* file_system_init (void);
 
 /**
 * Create the file system by allocating a slab for the entire thing (since we limit to 128 inodes)
@@ -93,5 +96,9 @@ void inode_read (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint
 * Read what is in the data block to the file
 */
 void inode_write (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
+
+Inode* move_in_directory (FileSystem_s *fs, uint32_t inode_number);
+
+Inode* mode_out_directory (FileSystem_s *fs, uint32_t inode_number);
 
 #endif
