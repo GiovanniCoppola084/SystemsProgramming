@@ -2,19 +2,65 @@
 #include "kmem.h"
 
 void Filesystem_s* file_system_init (void) {
-    Filesystem_s *fs = (Filesystem_s *) USERLAND_FILE_ADDRESS_START;
+    Filesystem_s *fs = (Filesystem_s *) (USERLAND_FILE_ADDRESS_START + 1);
 
     // Set the initial number of blocks
-    fs->num_free_blocks = TOTAL_NUM_BLOCKS;
+    fs->num_free_blocks = MAX_NUM_OF_DATA_BLOCKS;
     // Set the initial number of free nodes
-    fs->num_free_nodes = TOTAL_NUM_NODE;
+    fs->num_free_nodes = TOTAL_NUM_OF_INODES;
 
     // Add inode sector given the size of the inodes
     // This is the start plus the 16 bits for the file systems struct
-    uint64_t start_of_inode_sector = USERLAND_FILE_ADDRESS_START +  SIZE_OF_FILE_SYSTEM
+    uint32_t current_address = USERLAND_FILE_ADDRESS_START +  SIZE_OF_FILE_SYSTEM + 1;
 
-    // Go to beginning of the data block (size of inodes * num of inodes + base addr of inodes)
-    for (int i = 0; i < )
+    // Set the free nodes to be the head of the list now
+    fs->free_nodes = NULL;
+
+    for (int i = 0; i < TOTAL_NUM_OF_INODES; i++) {
+        list_s *new_node = (list_s *) current_address;
+        assert(new_node != NULL);
+
+        new_node->data = NULL;
+        new_node->next = NULL;
+
+        if (fs->free_nodes == NULL) {
+            fs->free_nodes = new_node;
+        } else {
+            list_s *current = fs->free_nodes;
+            while (current->next) {
+                current = current->next;
+            }
+            current->next = new_node;
+        }
+    }
+
+    // Set the used nodes to null since we wont be using any at init
+    fs->used_nodes = NULL;
+
+    // Move it up one byte plus the size of an inode to get into the block space
+    current_address = current_address + SIZE_OF_INODE + 1;
+
+    fs->free_blocks = NULL;
+
+    for (int i = 0; i < TOTAL_NUM_OF_DATA_BLOCKS; i++) {
+        list_s *new_node = (list_s *) current_address;
+        assert(new_node != NULL);
+
+        new_node->data = NULL;
+        new_node->next = NULL;
+
+        if (fs->free_blocks == NULL) {
+            fs->free_blocks = new_node;
+        } else {
+            list_s *current = fs->free_blocks;
+            while (current->next) {
+                current = current->next;
+            }
+            current->next = new_node;
+        }
+    }
+
+    fs->used_blocks = NULL;
 
     return fs;
 }

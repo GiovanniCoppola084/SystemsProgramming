@@ -22,30 +22,27 @@
 #include "cio.h"
 #include "users.h"
 #include "ulib.h"
+#include "vector.h"
 
 #define USERLAND_FILE_ADDRESS_START 0xC0000000
-#define USRELAND_FILE_ADDRESS_END 0xffffffff
-
-#define SIZE_OF_FILE_SYSTEM 0x10
-#define SIZE_OF_INODE 0x48 // 72 bytes
-#define SIZE_OF_FILE 0x320 // 560 bytes
-#define TOTAL_NUM_BLOCKS 368426240
-#define TOTAL_NUM_NODE 512
-#define INODES_PER_FILE 128
-#define DATA_BLOCK_SIZE 512
+#define USERLAND_FILE_ADDRESS_END 0xffffffff
+#define MAX_NUM_OF_DATA_BLOCKS 960
+#define TOTAL_SIZE_DATA_BLOCK 512
+#define TOTAL_SIZE_OF_ALL_DATA_BLOCKS (MAX_NUM_OF_DATA_BLOCKS * TOTAL_SIZE_DATA_BLOCK)
+#define TOTAL_NUM_OF_INODES 64
+#define SIZE_OF_INODES 64
+#define TOTAL_SIZE_FILE_SYS_STRUCT (1 + 1 + (4 * MAX_NUM_OF_DATA_BLOCKS) + (4 * TOTAL_NUM_OF_INODES))
 
 typedef struct Inode_s {
-    uint32_t size;
-    uint32_t direct[16]; // 16 pointers per i-node
-    uint16_t num_of_pointers;
-    bool_t mode; // True for direct, false for indirect
-    unsigned char padding[1]; // 72 bytes
-} Inode_s;
+    uint8_t size;
+    uint8_t num_of_pointers;
+    uint8_t mode; // True for direct, false for indirect
+    uint32_t *direct[15]; // 16 pointers per i-node
+} Inode_s; // Exactly 64 bytes
 
 typedef struct File_s {
     unsigned char name[14];
-    unsigned char index[2]; // 2 bytes for the file index
-    uint32_t inodes[INODES_PER_FILE]; // 16 i-node pointers per block
+    uint8_t file_index; // 2 bytes for the file index
     unsigned char data_block[DATA_BLOCK_SIZE]; // 512 bytes per data block
 } File_s;
 
@@ -57,10 +54,18 @@ typedef struct File_s {
 typedef struct FileSystem_s {
     uint8_t num_free_blocks;
     uint8_t num_free_nodes;
-} FileSystem_s;
+    list_s *free_nodes; // This will contain all of the free nodes
+    list_s *used_nodes; // This will be empty at the initial process
+    list_s *free_blocks; // This will contain all of the free blocks
+    list_s *used_blocks; // This will be empty at the initial process
+} FileSystem_s; // 20 bytes
 
-uint32_t free_blocks[TOTAL_NUM_BLOCKS]; // 368426240 total free blocks with the 1 Gb I will use
-uint32_t free_nodes[TOTAL_NUM_NODE]; // 36,864 bytes taken up by Inodes in file system. 1,073,704,960 left from the one Gb I will use
+typedef struct list_s {
+    // This will point to either a data section or another node
+    // This will depend on what the mode byte is
+    void *data;
+    list_s *next;
+} list_s;
 
 /**
 * Make an init function that will add the addresses to the free lists in the file system
