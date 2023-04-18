@@ -1,7 +1,14 @@
 #include "file_template.h"
 #include "kmem.h"
 
-void Filesystem_s* file_system_init (void) {
+/**
+* file_system_init - this function will initialize the file system by providing the free blocks
+*                    that will be used for the inodes and the data blocks. The used blocks linked
+*                    list will be null since we won't have any in use at init.
+* 
+* @return the file system will the initialized linked lists for memory
+*/
+Filesystem_s* file_system_init (void) {
     Filesystem_s *fs = (Filesystem_s *) (USERLAND_FILE_ADDRESS_START + 1);
 
     // Set the initial number of blocks
@@ -18,6 +25,7 @@ void Filesystem_s* file_system_init (void) {
 
     for (int i = 0; i < TOTAL_NUM_OF_INODES; i++) {
         list_s *new_node = (list_s *) current_address;
+        current_address = current_address + SIZE_OF_INODES + 1;
         assert(new_node != NULL);
 
         new_node->data = NULL;
@@ -44,6 +52,7 @@ void Filesystem_s* file_system_init (void) {
 
     for (int i = 0; i < TOTAL_NUM_OF_DATA_BLOCKS; i++) {
         list_s *new_node = (list_s *) current_address;
+        current_address = current_address + SIZE_OF_DATA_BLOCK + 1;
         assert(new_node != NULL);
 
         new_node->data = NULL;
@@ -62,15 +71,6 @@ void Filesystem_s* file_system_init (void) {
 
     fs->used_blocks = NULL;
 
-    return fs;
-}
-
-/**
-* Create the file system by allocating a slab for the entire thing (since we limit to 128 inodes)
-*/
-uint16_t create_file_system (FileSystem_s *fs) {
-    fs = (FileSystem_s*) _km_page_alloc(1); // I do want to add to free block list since I cannot use kalloc without free blocks
-    assert (fs != NULL);
     return fs;
 }
 
