@@ -36,14 +36,16 @@
 typedef struct Inode_s {
     uint8_t size;
     uint8_t num_of_pointers;
-    uint8_t mode; // True for direct, false for indirect
-    uint32_t *direct[15]; // 16 pointers per i-node
+    uint8_t is_direct; // True for direct, false for indirect. This is only for the first pointer
+    File_s *direct[15]; // 15 pointers to other inodes per inode (MAX)
 } Inode_s; // Exactly 64 bytes
 
 typedef struct File_s {
     unsigned char name[14];
     uint8_t file_index; // 2 bytes for the file index
-    unsigned char data_block[DATA_BLOCK_SIZE]; // 512 bytes per data block
+    // unsigned char data_block[DATA_BLOCK_SIZE]; // 512 bytes per data block
+    // pointer to data block
+    uint32_t *data_block; // pointer to 512 byte data block
 } File_s;
 
 // Don't want file system as struct
@@ -83,9 +85,16 @@ uint16_t create_file_system (FileSystem_s *fs);
 void delete_file_system (FileSystem_s *fs, uint32_t inode_number);
 
 /**
-* Get the size of the inode present
+* Create the node by finding the first free node and add it to the used nodes list (on the end)
 */
-int inode_size (FileSystem_s *fs, uint32_t inode_number);
+void create_inode(FileSystem_s *fs, uint8_t num_pointers, bool_t is_direct);
+
+void create_data_block(FileSystem_s *fs, unsigned char block[size], uint16_t size);
+
+/**
+* Find the node in the used list and remove it
+*/
+void delete_inode(FileSystem_s *fs, Inode_s inode);
 
 /**
 * Get the inode by going into the list of inodes within the file system

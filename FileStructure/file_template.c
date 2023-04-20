@@ -74,43 +74,77 @@ Filesystem_s* file_system_init (void) {
     return fs;
 }
 
-/**
-* Delete the entire file system by freeing up the memory
-*/
-void delete_file_system (FileSystem_s *fs, uint32_t inode_number) {
-    assert1(fs != NULL);
-
-    Inode_s *inode = (Inode_s *) fs->inode_pointers[inode_number];
+void create_inode(FileSystem_s *fs, uint8_t num_pointers, bool_t is_direct) {
+    assert(fs->free_nodes == NULL); // Assert that we still have free nodes. If we don't, then we panic
     
-    // Free the pointers
+    list_s *new_node = fs->free_nodes;
+
+    if (fs->used_nodes != NULL) {
+        fs->used_nodes = new_node;
+        fs->free_nodes = new_node->next;
+    } else {
+        list_s *current = fs->used_nodes;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = new_node;
+
+        assert(fs->used_nodes != NULL);
+
+        current = current->next;
+        current->data = (Inode_s *) current->data;
+        current->data->size = 0;
+        current->data->num_of_pointers = 0;
+        current->data->is_direct = false;
+        for (int i = 0; i < 16; i++) {
+            current->data->direct[i] = NULL;
+        }
+
+        fs->free_nodes = new_node->next;
+    }
+
+    fs->num_free_nodes--;
+    fs->num_used_nodes++;
 }
 
-/**
-* Get the size of the inode present
-*/
-int inode_size (FileSystem_s *fs, uint32_t inode_number) {
-    Inode_s *inode = (Inode_s *) fs->inode_pointers[inode_number];
+void create_data_block(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t index) {
+    assert(fs->free_blocks != NULL);
 
-    return inode->size;
-}
+    list_s *new_node = fs->free_blocks;
 
-/**
-* Get the inode by going into the list of inodes within the file system
-*/
-Inode_s* get_inode (FileSystem_s *fs, uint32_t inode_number) {
-    return (Inode_s *) fs->inode_pointers[inode_number];
+    if (fs->used_blocks != NULL) {
+        fs->used_blocks = new_node;
+        fs->free_blocks = new_node->next;
+    } else {
+        list_s *current = fs->used_blocks;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = new_node;
+
+        assert(fs->used_nodes != NULL);
+
+        current = current->next;
+        current->data = (File_s *) current->data;
+        current->data->name = name;
+        current->data->file_index = index;
+        current->data->data_block = block;
+
+        fs->free_blocks = new_node->next;
+    }
+
+    fs->num_free_blocks--;
+    fs->num_used_blocks++;
 }
 
 /**
 * Output what is in the file system to a data block
 */
 void inode_read (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length) {
-    // First check to make sure the inode at the current index is not a direct pointer.
-    // If it is, then we need to panic since it's trying to access a data block that is does not have.
-    // If that check succeeds, then we just give the data block to the block passed into the function
-
-    Inode_s* inode = get_inode (fs, inode_number);
-
+    // This will be accessing the data block in a file, rather than accessing another inode
+    // So if the mode bit tells you that it is a direct pointer, get the data block
+    // If it's not, then we panic and abort
+    
 }
 
 /**
@@ -121,7 +155,7 @@ void inode_write (FileSystem_s *fs, uint32_t inode_number, char *data_block, uin
 }
 
 Inode* move_in_directory (Filesystem_s *fs, uint32_t inode_number) {
-    // Check if the inode at teh number is a directory or not (direct pointer or non-direct pointer)
+    
 }
 
 Inode* mode_out_directory (FileSystem_s *fs, uint32_t inode_number) {
