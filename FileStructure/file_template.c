@@ -1,12 +1,5 @@
 #include "file_template.h"
 
-/**
-* file_system_init - this function will initialize the file system by providing the free blocks
-*                    that will be used for the inodes and the data blocks. The used blocks linked
-*                    list will be null since we won't have any in use at init.
-* 
-* @return the file system will the initialized linked lists for memory
-*/
 FileSystem_s* file_system_init (void) {
     FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START + 0x1);
 
@@ -74,14 +67,14 @@ FileSystem_s* file_system_init (void) {
 
     fs->used_blocks = NULL;
 
+    fs->current_inode = NULL;
+    fs->prevous_inode = NULL;
+
     return fs;
 }
 
-Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t num_pointers, uint8_t index, bool_t is_direct, Inode_s *new_inode) {
+Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode) {
     assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
-    
-    // Check and see if the node is going to be direct or not (if it's at position 0)
-    // Also need to change this up so that it also allocates the data for the if case, not just else
 
     list_s *new_node = fs->free_nodes;
 
@@ -177,8 +170,11 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
     }
 }
 
-list_s *create_data_block(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t index) {
+list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, unsigned char *name, unsigned char *block, uint8_t index) {
     assert(fs->free_blocks != NULL);
+    if (index == 0) {
+        assert(is_direct);
+    }
 
     list_s *new_node = fs->free_blocks;
 
@@ -208,12 +204,11 @@ list_s *create_data_block(FileSystem_s *fs, unsigned char *name, unsigned char *
     fs->num_free_blocks--;
     fs->num_used_blocks++;
 
+    inode->direct[index] = current;
+
     return current;
 }
 
-/**
-* Output what is in the file system to a data block
-*/
 void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     // This will be accessing the data block in a file, rather than accessing another inode
     // So if the mode bit tells you that it is a direct pointer, get the data block
@@ -227,9 +222,6 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     printf("Data in the block: %s", file->data_block);
 }
 
-/**
-* Read what is in the data block to the file
-*/
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, unsigned char *block) {
     // This will work similar to read. If the inode is not a direct pointer, then we panic
     // If it is direct, then we simply set the data block
@@ -258,14 +250,19 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
     file->data_block = &empty_block[0];
 }
 
-Inode* move_in_directory (Inode_s *inode, boot_t is_direct) {
+Inode* move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     assert(!inode->is_direct);
 
+    fs->previous_inode = inode;
+    fs->current_inode = (Inode_s *) inode->direct[0];
+
+    assert(fs->current_index != NULL);
+
     // Return the first pointer if it's not direct, since that will move us to a new directory
-    return (Inode_s *) inode->direct[0];
+    return fs->current_inode;
 }
 
 
 // Might not be able to implement this unless I do a doubly linked list, or a if I store the previous in the file 
 // system structure
-Inode* mode_out_directory (FileSystem_s *fs, uint32_t inode_number);
+Inode* mode_out_directory (FileSystem_s *fs, Inode_s *inode);

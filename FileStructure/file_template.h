@@ -5,8 +5,8 @@
 **
 ** Authors: Gino Coppola
 **
-** Description: The prototypes for functions to set up a basic file.
-** Base of Unix V7 or Microsoft FAT
+** Description: My take on a Unix V7 file structure using ramdisk in our operating system
+** 
 ** https://www.cs.rit.edu/~wrc/courses/common/notes/csci452/
 ** https://learn.microsoft.com/en-us/troubleshoot/windows-client/backup-and-storage/fat-hpfs-and-ntfs-file-systems
 ** https://github.com/v7unix/v7unix
@@ -40,8 +40,8 @@
 #define POINTERS_PER_INODE 15
 
 /*Sizes for file system structure*/
-#define SIZE_OF_FILE_SYSTEM_DEC 24 // In bytes
-#define SIZE_OF_FILE_SYSTEM_HEX 0x18
+#define SIZE_OF_FILE_SYSTEM_DEC 28 // In bytes
+#define SIZE_OF_FILE_SYSTEM_HEX 0x1C
 
 typedef struct Inode_s {
     uint8_t size;
@@ -77,52 +77,88 @@ typedef struct FileSystem_s {
     list_s *used_nodes; // This will be empty at the initial process
     list_s *free_blocks; // This will contain all of the free blocks
     list_s *used_blocks; // This will be empty at the initial process
-} FileSystem_s; // 24 bytes
+    Inode_s *current_inode; // The current inode (working directory)
+    Inode_s *previous_inode; // The previous inode (one directory level up)
+} FileSystem_s; // 28 bytes
 
 /**
-* Make an init function that will add the addresses to the free lists in the file system
+* Make an init function that will add the addresses to the free lists in the file system and set the counts
 */
-FileSystem_s *file_system_init (void);
+FileSystem_s* file_system_init (void);
 
 /**
-* Create the file system by allocating a slab for the entire thing (since we limit to 128 inodes)
-*/
-uint16_t create_file_system (FileSystem_s *fs);
+ * @brief When the user wants to create an inode, it will take a block off the free list and allocate it in the used list.
+ *        I will possibly add a function to add an indirect pointer in, but not for now.
+ * 
+ * @param fs - the file system structure
+ * @param name - the name of the inode if they want to create one
+ * @param block - the block that will go in the inode if they make a direct one
+ * @param index - the index into the array of pointers in the inode
+ * @param is_direct - if the node will be direct or indirect
+ * @param new_inode - the node if it is indirect
+ * @return Inode_s* - the node that was created for the user and added into the file system
+ */
+Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode);
 
 /**
-* Delete the entire file system by freeing up the memory
-*/
-void delete_file_system (FileSystem_s *fs, uint32_t inode_number);
+ * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
+ *        work for an indirect or direct pointer
+ * 
+ * @param fs - the file system structure
+ * @param inode - the inode the user wants to delete (if indirect)
+ * @param index - the index of the direct pointer
+ * @param is_direct - if the index is at 0, then check if it is direct or indirect
+ */
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
 
 /**
-* Create the node by finding the first free node and add it to the used nodes list (on the end)
-*/
-void create_inode(FileSystem_s *fs, uint8_t num_pointers, bool_t is_direct);
-
-void create_data_block(FileSystem_s *fs, unsigned char block[SIZE_OF_DATA_BLOCK], uint16_t size);
-
-/**
-* Find the node in the used list and remove it
-*/
-void delete_inode(FileSystem_s *fs, Inode_s inode);
-
-/**
-* Get the inode by going into the list of inodes within the file system
-*/
-Inode_s* get_inode (FileSystem_s *fs, uint32_t inode_number);
+ * @brief Create a data block object and return it in the list object
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param is_direct - if the node being added is direct or indirect
+ * @param name - the name of the file that will be created
+ * @param block - the block if it is direct
+ * @param index - the index to say where to add the node in
+ * @return list_s* 
+ */
+list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, unsigned char *name, unsigned char *block, uint8_t index);
 
 /**
-* Output what is in the file system to a data block
-*/
-void inode_read (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
+ * @brief Read the data block from the current working directory. Check to make sure if the index is at 0, then it's direct
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param inode_number - the index of the data block to read from
+ */
+void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
 
 /**
-* Read what is in the data block to the file
-*/
-void inode_write (FileSystem_s *fs, uint32_t inode_number, char *data_block, uint32_t length);
+ * @brief Send a data block to an inode in the current working directory
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param inode_number - the index of the data block to write into
+ * @param block - the data block being sent into the inode
+ */
+void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, unsigned char *block);
 
-Inode_s* move_in_directory (FileSystem_s *fs, uint32_t inode_number);
+/**
+ * @brief Set the data block of an inode to be all spaces (empty characters) when the user wants
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param inode_number - the index of the data block to delete
+ */
+void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
 
-Inode_s* mode_out_directory (FileSystem_s *fs, uint32_t inode_number);
+/**
+ * @brief Move into another directory by making sure the pointer at index 0 is a direct pointer
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @return Inode* - The current working directory we are in
+ */
+Inode* move_in_directory (FileSystem *fs, Inode_s *inode);
 
 #endif
