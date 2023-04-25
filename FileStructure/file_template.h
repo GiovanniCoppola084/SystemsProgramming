@@ -5,7 +5,7 @@
 **
 ** Authors: Gino Coppola
 **
-** Description: My take on a Unix V7 file structure using ramdisk in our operating system
+** Description: My take on a Unix V7 file structure using RAM disk in our operating system
 ** 
 ** https://www.cs.rit.edu/~wrc/courses/common/notes/csci452/
 ** https://learn.microsoft.com/en-us/troubleshoot/windows-client/backup-and-storage/fat-hpfs-and-ntfs-file-systems
