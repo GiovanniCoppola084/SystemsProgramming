@@ -22,7 +22,7 @@
 #include "../cio.h"
 #include "../users.h"
 #include "../ulib.h"
-#include "../vector.h"
+#include "../kdefs.h"
 
 /*File address space start and end*/
 #define USERLAND_FILE_ADDRESS_START 0xC0000000
@@ -30,8 +30,11 @@
 
 /*Sizes for data blocks*/
 #define MAX_NUM_OF_DATA_BLOCKS 960 // 15 pointers per inode and 64 inodes total
-#define SIZE_OF_DATA_BLOCK_DEC 528
-#define SIZE_OF_DATA_BLOCK_HEX 0x210
+#define SIZE_OF_DATA_BLOCK_DEC 512
+#define SIZE_OF_DATA_BLOCK_HEX 0x200
+
+#define SIZE_OF_FILE_DEC 528
+#define SIZE_OF_FILE_HEX 0x210
 
 /*Sizes for inodes*/
 #define TOTAL_NUM_OF_INODES 64
@@ -51,9 +54,9 @@ typedef struct Inode_s {
 } Inode_s; // Exactly 64 bytes
 
 typedef struct File_s {
-    unsigned char name[14];
+    char name[14];
     uint8_t file_index; // 2 bytes for the file index
-    unsigned char data_block[512]; // pointer to 512 byte data block
+    char data_block[SIZE_OF_DATA_BLOCK_DEC]; // pointer to 512 byte data block
 } File_s; // 528 bytes
 
 typedef struct list_s {
@@ -96,7 +99,7 @@ FileSystem_s* file_system_init (void);
  * @param new_inode - the node if it is indirect
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
-Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode);
+Inode_s *create_inode(FileSystem_s *fs, char *name, char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode);
 
 /**
  * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
@@ -120,7 +123,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
  * @param index - the index to say where to add the node in
  * @return list_s* 
  */
-list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, unsigned char *name, unsigned char *block, uint8_t index);
+list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char *name, char *block, uint8_t index);
 
 /**
  * @brief Read the data block from the current working directory. Check to make sure if the index is at 0, then it's direct
@@ -139,7 +142,7 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
  * @param inode_number - the index of the data block to write into
  * @param block - the data block being sent into the inode
  */
-void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, unsigned char *block);
+void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char *block);
 
 /**
  * @brief Set the data block of an inode to be all spaces (empty characters) when the user wants

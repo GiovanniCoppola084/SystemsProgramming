@@ -212,9 +212,9 @@ GAS LISTING isr_stubs.s 			page 1
  191              		// EBX still points to the current process' PCB
  192              	
  193 0034 31C0     		xorl	%eax, %eax
- 194 0036 668B4312 		movw	PCB_ppid(%ebx), %ax	// PPID
+ 194 0036 668B4316 		movw	PCB_ppid(%ebx), %ax	// PPID
  195 003a 50       		pushl	%eax
- 196 003b 668B4310 		movw	PCB_pid(%ebx), %ax	// PID
+ 196 003b 668B4314 		movw	PCB_pid(%ebx), %ax	// PID
  197 003f 50       		pushl	%eax
  198              	
  199 0040 A1000000 		movl	_systemTime, %eax	// current time

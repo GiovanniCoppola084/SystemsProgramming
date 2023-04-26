@@ -57,6 +57,7 @@
 #include "cio.h"
 
 #include "kmem.h"
+#include "FileStructure/file_template.h"
 
 /*
 ** PRIVATE DEFINITIONS
@@ -150,6 +151,9 @@ typedef struct memregion_s {
 #define ADDR_BIT_32     0x0000000100000000LL
 #define ADDR_LOW_HALF   0x00000000ffffffffLL
 #define ADDR_HIGH_HALR  0xffffffff00000000LL
+
+#define USERLAND_FILE_ADDRESS_START 0xC0000000
+#define USRELAND_FILE_ADDRESS_END 0xffffffff
 
 #define ADDR_32_MAX     ADDR_LOW_HALF
 #define ADDR_64_FIRST   ADDR_BIT_32
@@ -290,6 +294,7 @@ void _km_init( void ) {
         cutoff &= 0xfffff000LL;
     cutoff += 0x1000LL;
     }
+    // c000...0 30 0's (digits hex)
 
     // get the list length
     entries = *((int32_t *) MMAP_ADDRESS);
@@ -314,6 +319,7 @@ void _km_init( void ) {
         **  ACPI indicates it's non-volatile memory
         **  Region type isn't "usable"
         **  Region is above the 4GB address limit
+        **  Region is part of the upper gig that will be used by the file system
         **
         ** Currently, only "normal" (type 1) regions are considered
         ** "usable" for our purposes.  We could potentially expand
@@ -340,6 +346,22 @@ void _km_init( void ) {
 
         // ignore it if it's above 4GB
         if( region->base.HIGH != 0 ) {
+            continue;
+        }
+
+        // Check if upper two bits are 11 (in upper 4th gig)
+
+        if (region->length.HIGH != 0) {
+            continue;
+        }
+
+        // If the region starts in the upper gig, continue
+        if( ((region->base.LOW) > USERLAND_FILE_ADDRESS_START) || ((region->base.LOW) < USERLAND_FILE_ADDRESS_END) ) {
+            continue;
+        }
+
+        // If the region ends up in the upper gig (length) , continue
+        if( (((region->base.LOW) + (region->length.LOW)) <= USERLAND_FILE_ADDRESS_START) || (((region->base.LOW) + (region->length.LOW)) >= USERLAND_FILE_ADDRESS_END) ) {
             continue;
         }
 

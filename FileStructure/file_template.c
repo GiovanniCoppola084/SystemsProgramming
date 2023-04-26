@@ -4,7 +4,7 @@ FileSystem_s* file_system_init (void) {
     FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START + 0x1);
 
     // Set the initial number of blocks
-    // Implicit coversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 960 to 192
+    // Implicit conversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 960 to 192
     fs->num_free_blocks = MAX_NUM_OF_DATA_BLOCKS;
     // Set the initial number of free nodes
     fs->num_free_nodes = TOTAL_NUM_OF_INODES;
@@ -66,7 +66,7 @@ FileSystem_s* file_system_init (void) {
         }
     
         // Move to the next data block space
-        current_address = current_address + SIZE_OF_DATA_BLOCK_HEX + 0x1;
+        current_address = current_address + SIZE_OF_FILE_HEX + 0x1;
     }
 
     fs->used_blocks = NULL;
@@ -77,7 +77,7 @@ FileSystem_s* file_system_init (void) {
     return fs;
 }
 
-Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode) {
+Inode_s *create_inode(FileSystem_s *fs, char *name, char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode) {
     assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
 
     list_s *new_node = fs->free_nodes;
@@ -100,7 +100,6 @@ Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *bloc
 
     current = current->next;
     Inode_s *accessed_node = (Inode_s *)(current->data);
-    // Member reference base type 'void' is not a structure or a union
     accessed_node->size = 0;
     accessed_node->num_of_pointers = 0;
 
@@ -112,7 +111,9 @@ Inode_s *create_inode(FileSystem_s *fs, unsigned char *name, unsigned char *bloc
 
     fs->num_free_nodes--;
 
-    return (Inode_s *)current->data;
+    Inode_s *node = (Inode_s *)(current->data);
+    node->num_of_pointers = 0;
+    return node;
 }
 
 void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
@@ -145,6 +146,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         free_node->data = NULL;
         free_node->next = NULL;
         fs->num_free_nodes++;
+        inode->num_of_pointers--;
     } else {
         inode->direct[index] = NULL;
 
@@ -156,7 +158,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         list_s *used_block = fs->used_blocks;
         bool_t found = false;
         while (used_block->next) {
-            if (((File_s *)(used_block->data)) == inode) {
+            if (((Inode_s *)(used_block->data)) == inode) {
                 free_block->next = used_block;
                 found = true;
                 break;
@@ -170,10 +172,11 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         free_block->data = NULL;
         free_block->next = NULL;
         fs->num_free_blocks++;
+        inode->num_of_pointers--;
     }
 }
 
-list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, unsigned char *name, unsigned char *block, uint8_t index) {
+list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[512], uint8_t index) {
     assert(fs->free_blocks != NULL);
     if (index == 0) {
         assert(is_direct);
@@ -198,16 +201,19 @@ list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, un
     assert(current->next != NULL);
 
     current = current->next;
-    Inode_s *accessed_node = (File_s *)(current->data);
-    accessed_node->name = name;
+    File_s *accessed_node = (File_s *)(current->data);
+    //accessed_node->name = name;
+    strcpy(accessed_node->name, name);
     accessed_node->file_index = index;
-    accessed_node->data_block = block;
+    //accessed_node->data_block = block;
+    strcpy(accessed_node->data_block, block);
 
     fs->free_blocks = new_node->next;
 
     fs->num_free_blocks--;
 
     inode->direct[index] = current;
+    inode->num_of_pointers++;
 
     return current;
 }
@@ -222,10 +228,10 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
 
     File_s *file = (File_s *) inode->direct[inode_number];
 
-    printf("Data in the block: %s", file->data_block);
+    sprint("Data in the block: %s", file->data_block);
 }
 
-void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, unsigned char *block) {
+void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char block[SIZE_OF_DATA_BLOCK_DEC]) {
     // This will work similar to read. If the inode is not a direct pointer, then we panic
     // If it is direct, then we simply set the data block
     if (inode_number == 0) {
@@ -234,8 +240,11 @@ void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, unsig
 
     File_s *file = (File_s *) inode->direct[inode_number];
 
-    file->data_block = block;
-    printf("Data now in block: %s", file->data_block);
+    //file->data_block = block;
+    strcpy(file->data_block, block);
+    char str[80];
+    sprint(str, "Data now in block: %s", file->data_block);
+    cwrites(str);
 }
 
 void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
@@ -245,46 +254,58 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
 
     File_s *file = (File_s *) inode->direct[inode_number];
 
-    unsigned char empty_block[SIZE_OF_DATA_BLOCK];
-    for (int i = 0; i < SIZE_OF_DATA_BLOCK; i++) {
+    char empty_block[SIZE_OF_DATA_BLOCK_DEC];
+    for (int i = 0; i < SIZE_OF_DATA_BLOCK_DEC; i++) {
         empty_block[i] = ' ';
     }
     
-    file->data_block = &empty_block[0];
+    //file->data_block = &empty_block[0];
+    strcpy(file->data_block, empty_block);
 }
 
-Inode* move_in_directory (FileSystem_s *fs, Inode_s *inode) {
+Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     assert(!inode->is_direct);
 
     fs->previous_inode = inode;
     fs->current_inode = (Inode_s *) inode->direct[0];
 
-    assert(fs->current_index != NULL);
+    assert(fs->current_inode != NULL);
 
     // Return the first pointer if it's not direct, since that will move us to a new directory
     return fs->current_inode;
 }
 
 void print_directory (FileSystem_s *fs, Inode_s *inode) {
-    printf("Current working directory: \n");
-    for (int i = 0, i < POINTERS_PER_INODE, i++) {
+    char str[80];
+    sprint(str, "Current working director: \n");
+    cwrites(str);
+    for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
-            printf("1. Directory: %s", inode->direct[0]->name);
+            sprint(str, "1. Directory: %s");
+            cwrites(str);
         } else if (i == 0 && inode->is_direct && inode->direct[0] != NULL) {
-            printf("1. File: %s", inode->direct[0]->name);
+            File_s *file = (File_s *)inode->direct[0];
+            sprint(str, "1. File: %s", file->name);
+            cwrites(str);
         }
 
         if (i > 0 && inode->direct[i] != NULL) {
-            printf("%d. File: %s", (i + 1), inode->direct[i]->name);
+            File_s *file = (File_s *)inode->direct[i];
+            sprint(str, "%d. File: %s", (i + 1), file->name);
+            cwrites(str);
         }
     }
 
-    printf("Total inodes in use: %d\n", (TOTAL_NUM_OF_INODES - fs->num_free_nodes));
-    printf("Total free inodes: %d\n", fs->num_free_nodes);
-    printf("Total blocks in use: %d\n", (MAX_NUM_OF_DATA_BLOCKS - fs->num_free_blocks));
-    printf("Total free blocks: %d\n", fs->num_free_blocks);
+    sprint(str, "Total inodes in use: %d\n", (TOTAL_NUM_OF_INODES - fs->num_free_nodes));
+    cwrites(str);
+    sprint(str, "Total free inodes: %d\n", fs->num_free_nodes);
+    cwrites(str);
+    sprint(str, "Total blocks in use: %d\n", (MAX_NUM_OF_DATA_BLOCKS - fs->num_free_blocks));
+    cwrites(str);
+    sprint(str, "Total free blocks: %d\n", fs->num_free_blocks);
+    cwrites(str);
 }
 
 // Might not be able to implement this unless I do a doubly linked list, or a if I store the previous in the file 
 // system structure
-Inode* mode_out_directory (FileSystem_s *fs, Inode_s *inode);
+Inode_s *mode_out_directory (FileSystem_s *fs, Inode_s *inode);

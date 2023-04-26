@@ -110,6 +110,7 @@ typedef struct pcb_s {
     int32_t status;     // termination status, for parent's use
     uint32_t wakeup;    // wakeup time for this process when sleeping
     uint32_t working_directory; // working the directoy the user is in when they boot up the file system
+                                // Might only need to make this 8 bits (1 byte) depending on if I stick with Inodes
 
     // two-byte values
 

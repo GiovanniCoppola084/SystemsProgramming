@@ -15,9 +15,9 @@
 #
 
 OS_C_SRC = clock.c kernel.c kmem.c processes.c queues.c sched.c \
-	    sio.c stacks.c syscalls.c libc.c vector.c
+	    sio.c stacks.c syscalls.c libc.c vector.c FileStructure/file_template.c
 OS_C_OBJ = clock.o kernel.o kmem.o processes.o queues.o sched.o \
-	    sio.o stacks.o syscalls.o vector.o
+	    sio.o stacks.o syscalls.o vector.o file_template.o
 
 OS_S_SRC =
 OS_S_OBJ =
@@ -35,8 +35,8 @@ OS_OBJS = $(OS_C_OBJ) $(OS_S_OBJ)
 # "Userland" files
 #
 
-USR_C_SRC = users.c ulibc.c
-USR_C_OBJ = users.o ulibc.o
+USR_C_SRC = users.c ulibc.c file_template.c
+USR_C_OBJ = users.o ulibc.o file_template.h
 
 USR_S_SRC = ulibs.S
 USR_S_OBJ = ulibs.o
@@ -319,7 +319,7 @@ users.o: userland/main3.c userland/userH.c userland/userZ.c userland/userI.c
 users.o: userland/userW.c userland/userJ.c userland/userY.c userland/main4.c
 users.o: userland/userX.c userland/main5.c userland/userP.c userland/userQ.c
 users.o: userland/userR.c userland/userS.c userland/main6.c userland/init.c
-users.o: userland/idle.c
+users.o: userland/idle.c FileStructure/file_template.c
 ulibc.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
 ulibc.o: kmem.h processes.h
 ulibs.o: syscalls.h common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h

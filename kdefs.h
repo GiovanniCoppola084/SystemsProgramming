@@ -18,6 +18,7 @@
 // Kernel library
 
 #include "lib.h"
+#include "kernel.h"
 
 #ifndef SP_ASM_SRC
 

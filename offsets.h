@@ -3,7 +3,7 @@
 **
 ** GENERATED AUTOMATICALLY - DO NOT EDIT
 **
-** Creation date: Thu Mar 23 14:21:44 2023
+** Creation date: Wed Apr 26 17:27:15 2023
 **
 ** This header file contains C Preprocessor macros which expand
 ** into the byte offsets needed to reach fields within structs
@@ -81,12 +81,12 @@
 #define	PCB_stack              	4
 #define	PCB_status             	8
 #define	PCB_wakeup             	12
-#define	PCB_pid                	16
-#define	PCB_ppid               	18
-#define	PCB_state              	20
-#define	PCB_priority           	21
-#define	PCB_quantum            	22
-#define	PCB_filler             	23
+#define	PCB_pid                	20
+#define	PCB_ppid               	22
+#define	PCB_state              	24
+#define	PCB_priority           	25
+#define	PCB_quantum            	26
+#define	PCB_filler             	27
 
 // Entry structure
 

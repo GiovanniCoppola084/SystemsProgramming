@@ -1,0 +1,22 @@
+{
+    "files.associations": {
+        "atomic": "cpp",
+        "cwchar": "cpp",
+        "string": "cpp",
+        "memory": "cpp",
+        "memory_resource": "cpp",
+        "string_view": "cpp",
+        "type_traits": "cpp",
+        "cmath": "cpp",
+        "istream": "cpp",
+        "limits": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "stdexcept": "cpp",
+        "utility": "cpp"
+    },
+    "cSpell.words": [
+        "ACPI",
+        "SCCS"
+    ]
+}

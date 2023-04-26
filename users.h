@@ -9,6 +9,8 @@
 #ifndef USERS_H_
 #define USERS_H_
 
+#include "common.h"
+
 /*
 ** General (C and/or assembly) definitions
 **
@@ -170,6 +172,7 @@
 #define SPAWN_T
 #define SPAWN_U
 #define SPAWN_V
+
 
 //
 // There is no userO.  Users W-Z are spawned from other
