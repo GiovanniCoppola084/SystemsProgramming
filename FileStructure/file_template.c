@@ -1,3 +1,18 @@
+/*
+** SCCS ID: @(#)file_template.h	3/23/2023
+**
+** File:    file_template.c
+**
+** Authors: Gino Coppola
+**
+** Description: Function definitions for the Unix V7 based file system for our OS.
+**              This file includes the methods to initialize the file system, create and
+**              delete both inodes and data blocks, write/read from data blocks,
+**              move into directories, and print information about the current 
+**              working directory. 
+** 
+*/
+
 #include "file_template.h"
 
 FileSystem_s* file_system_init (void) {
@@ -79,7 +94,8 @@ FileSystem_s* file_system_init (void) {
 
 Inode_s *create_inode(FileSystem_s *fs, char *name, char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode) {
     assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
-
+    assert(strlen(name) <= 14);
+    
     list_s *new_node = fs->free_nodes;
     list_s *current;
 
@@ -120,7 +136,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
     assert(fs->free_blocks != NULL);
     assert(inode != NULL);
     
-    if (is_direct) {
+    if (!is_direct) {
         inode->direct[index] = NULL;
         
         list_s *free_node = fs->free_nodes;
@@ -178,6 +194,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
 
 list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[512], uint8_t index) {
     assert(fs->free_blocks != NULL);
+
     if (index == 0) {
         assert(is_direct);
     }

@@ -46,6 +46,7 @@
 #define SIZE_OF_FILE_SYSTEM_DEC 28 // In bytes
 #define SIZE_OF_FILE_SYSTEM_HEX 0x1C
 
+// Strucure for an inode
 typedef struct Inode_s {
     uint8_t size;
     uint8_t num_of_pointers;
@@ -53,12 +54,14 @@ typedef struct Inode_s {
     void *direct[15]; // 15 pointers to other inodes per inode (MAX)
 } Inode_s; // Exactly 64 bytes
 
+// Structure for a file
 typedef struct File_s {
     char name[14];
     uint8_t file_index; // 2 bytes for the file index
     char data_block[SIZE_OF_DATA_BLOCK_DEC]; // pointer to 512 byte data block
 } File_s; // 528 bytes
 
+// Structure for the list of memory addresses
 typedef struct list_s {
     // This will point to either a data section or another node
     // This will depend on what the mode byte is
@@ -66,11 +69,7 @@ typedef struct list_s {
     struct list_s *next;
 } list_s; 
 
-// Don't want file system as struct
-// Data block is linked list that points to next
-// I can point into the next block of memory when I need it (first/last (doesn't matter which) 32 bits are pointer)
-// Take the first one off the free list when I need it
-// Add the new one to the top of the free list when I am done with it
+// Structure for a file system
 typedef struct FileSystem_s {
     uint32_t num_free_blocks;
     uint32_t num_free_nodes;

@@ -30,7 +30,7 @@ USERMAIN( idle ) {
 
     /* Create the file system and the first inode */
     FileSystem_s *fs = file_system_init();
-    Inode_s *inode = create_inode(fs, "first_folder", NULL, 0, true, NULL);
+    Inode_s *inode = create_inode(fs, "first_folder", NULL, 0, false, NULL);
     assert(inode != NULL);
 
     /* Print that the inode was created successfully */
@@ -73,7 +73,7 @@ USERMAIN( idle ) {
     DELAY(LONG * 10);
 
     /* Create the next pointer to an inode in the working directory */
-    inode->direct[0] = create_inode(fs, "sec_dir", NULL, 0, true, NULL);
+    inode->direct[0] = create_inode(fs, "sec_dir", NULL, 0, false, NULL);
     sprint(str, "Inode created!\n");
     cwrites(str);
     DELAY(LONG * 10);
@@ -84,6 +84,16 @@ USERMAIN( idle ) {
 
     /* Move directories to the new one that we made */
     inode = move_in_directory(fs, inode);
+    print_directory(fs, inode);
+    DELAY(LONG * 10);
+
+    /* Create one more inode */
+    inode->direct[0] = create_inode(fs, "third_dir", NULL, 0, false, NULL);
+    print_directory(fs, inode);
+    DELAY(LONG * 10);
+
+    /* Delete the inode pointer that we just created */
+    delete_pointer_in_inode(fs, inode, 0, false);
     print_directory(fs, inode);
     DELAY(LONG * 10);
 
