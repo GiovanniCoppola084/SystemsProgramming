@@ -111,15 +111,26 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
     list_s *new_node, *head;
 
     if (fs->used_nodes == NULL) {
-        new_node = fs->free_nodes;
-        fs->used_nodes = new_node;
-        fs->free_nodes = fs->free_nodes->next;
+        // Move the head of the free nodes list to the used node list, and make the next pointer NULL
+        new_node = fs->free_nodes; // Set the new node to be a free node
+        new_node->next = NULL; // Set the nodes next to be NULL since the list was already empty
+        fs->used_nodes = new_node; // Set the used nodes to the new node
+        fs->free_nodes = fs->free_nodes->next; // Move the free list down a pointer
     } else {
-        // Insert current into head of linked list
-        new_node = (list_s *)(&fs->used_nodes);
+        /*new_node = (list_s *)(&fs->used_nodes);
+        new_node = fs->used_nodes;
         head = fs->used_nodes;
         new_node->next = head;
-        head = new_node;
+        head = new_node;*/
+        // Insert current into head of linked list
+        list_s *temp_node1;
+        list_s *temp_node2;
+        temp_node1 = fs->used_nodes; // head of the used node list
+        temp_node2 = fs->free_nodes; // head of free node list
+        new_node = fs->free_nodes; // This will be the new head of the used_nodes
+        temp_node2 = temp_node2->next; // Move the free nodes down the list
+        new_node->next = fs->used_nodes; // Set the new_node so it can become the head of the list
+        fs->used_nodes = new_node; // Now make it the head of the list
     }
 
     // This is printing C000000D as the new address. This is not correct since it is in the file system space now
