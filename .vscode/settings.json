@@ -13,7 +13,8 @@
         "ostream": "cpp",
         "sstream": "cpp",
         "stdexcept": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "array": "c"
     },
     "cSpell.words": [
         "ACPI",
