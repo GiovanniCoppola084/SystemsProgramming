@@ -15,7 +15,7 @@
 #
 
 OS_C_SRC = clock.c kernel.c kmem.c processes.c queues.c sched.c \
-	    sio.c stacks.c syscalls.c libc.c vector.c FileStructure/file_template.c
+	    sio.c stacks.c syscalls.c libc.c vector.c file_template.c
 OS_C_OBJ = clock.o kernel.o kmem.o processes.o queues.o sched.o \
 	    sio.o stacks.o syscalls.o vector.o file_template.o
 
@@ -24,7 +24,7 @@ OS_S_OBJ =
 
 OS_HDRS  = clock.h common.h compat.h kdefs.h kernel.h kmem.h offsets.h \
 	    processes.h queues.h sched.h sio.h stacks.h syscalls.h \
-	    udefs.h ulib.h vector.h
+	    udefs.h ulib.h vector.h file_template.h
 
 OS_LIBS =
 
@@ -35,8 +35,8 @@ OS_OBJS = $(OS_C_OBJ) $(OS_S_OBJ)
 # "Userland" files
 #
 
-USR_C_SRC = users.c ulibc.c file_template.c
-USR_C_OBJ = users.o ulibc.o file_template.h
+USR_C_SRC = users.c ulibc.c
+USR_C_OBJ = users.o ulibc.o
 
 USR_S_SRC = ulibs.S
 USR_S_OBJ = ulibs.o
@@ -296,7 +296,7 @@ kernel.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
 kernel.o: kmem.h processes.h queues.h bootstrap.h clock.h sched.h sio.h
 kernel.o: compat.h syscalls.h
 kmem.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
-kmem.o: kmem.h processes.h bootstrap.h
+kmem.o: kmem.h processes.h bootstrap.h file_template.h users.h ulib.h
 processes.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h
 processes.o: stacks.h kmem.h processes.h sched.h queues.h vector.h
 queues.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
@@ -313,13 +313,15 @@ syscalls.o: syscalls.h queues.h sched.h clock.h sio.h compat.h
 libc.o: lib.h cio.h
 vector.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
 vector.o: kmem.h processes.h vector.h
+file_template.o: file_template.h cio.h users.h common.h kdefs.h support.h
+file_template.o: lib.h kernel.h x86arch.h stacks.h kmem.h processes.h ulib.h
 users.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
 users.o: kmem.h processes.h users.h userland/main1.c ulib.h userland/main2.c
 users.o: userland/main3.c userland/userH.c userland/userZ.c userland/userI.c
 users.o: userland/userW.c userland/userJ.c userland/userY.c userland/main4.c
 users.o: userland/userX.c userland/main5.c userland/userP.c userland/userQ.c
 users.o: userland/userR.c userland/userS.c userland/main6.c userland/init.c
-users.o: userland/idle.c FileStructure/file_template.c
+users.o: userland/idle.c file_template.h
 ulibc.o: common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h stacks.h
 ulibc.o: kmem.h processes.h
 ulibs.o: syscalls.h common.h kdefs.h cio.h support.h lib.h kernel.h x86arch.h

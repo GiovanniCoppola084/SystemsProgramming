@@ -57,7 +57,7 @@
 #include "cio.h"
 
 #include "kmem.h"
-#include "FileStructure/file_template.h"
+#include "file_template.h"
 
 /*
 ** PRIVATE DEFINITIONS
@@ -356,12 +356,13 @@ void _km_init( void ) {
         }
 
         // If the region starts in the upper gig, continue
-        if( ((region->base.LOW) > USERLAND_FILE_ADDRESS_START) || ((region->base.LOW) < USERLAND_FILE_ADDRESS_END) ) {
+        if( ((region->base.LOW) >= USERLAND_FILE_ADDRESS_START) && ((region->base.LOW) <= USERLAND_FILE_ADDRESS_END) ) {
             continue;
         }
 
         // If the region ends up in the upper gig (length) , continue
-        if( (((region->base.LOW) + (region->length.LOW)) <= USERLAND_FILE_ADDRESS_START) || (((region->base.LOW) + (region->length.LOW)) >= USERLAND_FILE_ADDRESS_END) ) {
+        uint32_t local_end = region->base.LOW + region->length.LOW;
+        if( (local_end >= USERLAND_FILE_ADDRESS_START) && (local_end <= USERLAND_FILE_ADDRESS_END) ) {
             continue;
         }
 

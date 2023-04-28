@@ -19,10 +19,11 @@
 #ifndef _FILE_TEMPLATE_H_
 #define _FILE_TEMPLATE_H_
 
-#include "../cio.h"
-#include "../users.h"
-#include "../ulib.h"
-#include "../kdefs.h"
+#include "cio.h"
+#include "users.h"
+#include "ulib.h"
+#include "kdefs.h"
+#include "kernel.h"
 
 /*File address space start and end*/
 #define USERLAND_FILE_ADDRESS_START 0xC0000000
@@ -50,8 +51,8 @@
 typedef struct Inode_s {
     uint8_t size;
     uint8_t num_of_pointers;
-    uint8_t is_direct; // Only the first block can be an indirect pointer, this will be true if it's direct, false if indirect
-    void *direct[15]; // 15 pointers to other inodes per inode (MAX)
+    bool_t is_direct; // Only the first block can be an indirect pointer, this will be true if it's direct, false if indirect
+    void *direct[15]; // 1 node that can be either direct, or indirect
 } Inode_s; // Exactly 64 bytes
 
 // Structure for a file
@@ -98,7 +99,7 @@ FileSystem_s* file_system_init (void);
  * @param new_inode - the node if it is indirect
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
-Inode_s *create_inode(FileSystem_s *fs, char *name, char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode);
+Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct);
 
 /**
  * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
@@ -122,7 +123,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
  * @param index - the index to say where to add the node in
  * @return list_s* 
  */
-list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char *name, char *block, uint8_t index);
+File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index);
 
 /**
  * @brief Read the data block from the current working directory. Check to make sure if the index is at 0, then it's direct

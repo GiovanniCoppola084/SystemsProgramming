@@ -36,7 +36,11 @@ FileSystem_s* file_system_init (void) {
         // This will only cast the pointer in that address. This might need to be fixed
         // It should operate like malloc
         list_s *new_node = (list_s *) current_address;
-        assert(new_node != NULL);
+
+        if (new_node == NULL) {
+            _kpanic("new node is null");
+        }
+        // assert(new_node != NULL);
 
         new_node->data = NULL;
         new_node->next = NULL;
@@ -65,7 +69,11 @@ FileSystem_s* file_system_init (void) {
 
     for (int i = 0; i < MAX_NUM_OF_DATA_BLOCKS; i++) {
         list_s *new_node = (list_s *) current_address;
-        assert(new_node != NULL);
+
+        if (new_node == NULL) {
+            _kpanic("new node is null");
+        }
+        // assert(new_node != NULL);
 
         new_node->data = NULL;
         new_node->next = NULL;
@@ -92,31 +100,42 @@ FileSystem_s* file_system_init (void) {
     return fs;
 }
 
-Inode_s *create_inode(FileSystem_s *fs, char *name, char *block, uint8_t index, bool_t is_direct, Inode_s *new_inode) {
-    assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
-    assert(strlen(name) <= 14);
+Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
+    // assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
+    // assert(strlen(name) <= 14);
     
-    list_s *new_node = fs->free_nodes;
-    list_s *current;
-
-    if (fs->used_nodes == NULL) {
-        fs->used_nodes = new_node;
-        fs->free_nodes = new_node->next;
-
-        current = fs->used_nodes;
-    } else {
-        current = fs->used_nodes;
-        while (current->next) {
-            current = current->next;
-        }
-        current->next = new_node;
+    if (fs->free_nodes == NULL) {
+        _kpanic("no free nodes");
     }
 
-    assert(current->next != NULL);
+    list_s *new_node, *head;
 
-    current = current->next;
-    Inode_s *accessed_node = (Inode_s *)(current->data);
-    accessed_node->size = 0;
+    if (fs->used_nodes == NULL) {
+        new_node = fs->free_nodes;
+        fs->used_nodes = new_node;
+        fs->free_nodes = fs->free_nodes->next;
+    } else {
+        // Insert current into head of linked list
+        new_node = (list_s *)(&fs->used_nodes);
+        head = fs->used_nodes;
+        new_node->next = head;
+        head = new_node;
+    }
+
+    // This is printing C000000D as the new address. This is not correct since it is in the file system space now
+    char str[80];
+    sprint(str, "Address of new node: %08x\n", new_node);
+    cwrites(str);
+
+    // assert(current->next != NULL);
+    if (new_node == NULL) {
+        _kpanic("no free nodes");
+    }
+
+    // current = current->next;
+    Inode_s *accessed_node = (Inode_s *)(&head->data);
+    // &accessed_node = &current->data;
+    accessed_node->size = 5;
     accessed_node->num_of_pointers = 0;
 
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
@@ -125,16 +144,23 @@ Inode_s *create_inode(FileSystem_s *fs, char *name, char *block, uint8_t index, 
 
     fs->free_nodes = new_node->next;
 
-    fs->num_free_nodes--;
+    fs->num_free_nodes = fs->num_free_nodes - 1;
 
-    Inode_s *node = (Inode_s *)(current->data);
+    /*Inode_s *node = (Inode_s *)(current->data);
     node->num_of_pointers = 0;
-    return node;
+    return node;*/
+    return accessed_node;
 }
 
 void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
-    assert(fs->free_blocks != NULL);
-    assert(inode != NULL);
+    // assert(fs->free_blocks != NULL);
+    if (fs->free_blocks == NULL) {
+        _kpanic("no free nodes");
+    }
+    // assert(inode != NULL);
+    if (inode == NULL) {
+        _kpanic("no free nodes");
+    }
     
     if (!is_direct) {
         inode->direct[index] = NULL;
@@ -155,14 +181,21 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
             }
         }
 
-        assert(found == true); 
-        assert(free_node->next != NULL);
+        if (found == false) {
+            _kpanic("not found");
+        }
+        // assert(found == true); 
+
+        if (free_node->next == NULL) {
+            _kpanic("next node is null");
+        }
+        // assert(free_node->next != NULL);
 
         free_node = free_node->next;
         free_node->data = NULL;
         free_node->next = NULL;
-        fs->num_free_nodes++;
-        inode->num_of_pointers--;
+        fs->num_free_nodes = fs->num_free_nodes + 1;
+        inode->num_of_pointers = inode->num_of_pointers - 1;
     } else {
         inode->direct[index] = NULL;
 
@@ -181,22 +214,35 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
             }
         }
 
-        assert(found == true);
-        assert(free_block->next != NULL);
+        if (found == false) {
+            _kpanic("not found");
+        }
+        // assert(found == true);
+
+        if (free_block->next == NULL) {
+            _kpanic("next block is null");
+        }
+        // assert(free_block->next != NULL);
 
         free_block = free_block->next;
         free_block->data = NULL;
         free_block->next = NULL;
-        fs->num_free_blocks++;
-        inode->num_of_pointers--;
+        fs->num_free_blocks = fs->num_free_blocks + 1;
+        inode->num_of_pointers = inode->num_of_pointers - 1;
     }
 }
 
-list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[512], uint8_t index) {
-    assert(fs->free_blocks != NULL);
+File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
+    if (fs->free_blocks == NULL) {
+        _kpanic("no free blocks");
+    }
+    // assert(fs->free_blocks != NULL);
 
     if (index == 0) {
-        assert(is_direct);
+        if (!is_direct) {
+            _kpanic("not direct");
+        }
+        // assert(is_direct)
     }
 
     list_s *new_node = fs->free_blocks;
@@ -215,24 +261,27 @@ list_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
         current->next = new_node;
     }
 
-    assert(current->next != NULL);
+    if (current->next == NULL) {
+        _kpanic("next current node is null");
+    }
+    // assert(current->next != NULL);
 
     current = current->next;
     File_s *accessed_node = (File_s *)(current->data);
-    //accessed_node->name = name;
+    // accessed_node->name = name;
     strcpy(accessed_node->name, name);
     accessed_node->file_index = index;
-    //accessed_node->data_block = block;
+    // accessed_node->data_block = block;
     strcpy(accessed_node->data_block, block);
 
     fs->free_blocks = new_node->next;
 
-    fs->num_free_blocks--;
+    fs->num_free_blocks = fs->num_free_blocks - 1;
 
     inode->direct[index] = current;
-    inode->num_of_pointers++;
+    inode->num_of_pointers = inode->num_of_pointers + 1;
 
-    return current;
+    return accessed_node;
 }
 
 void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
@@ -240,19 +289,27 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     // So if the mode bit tells you that it is a direct pointer, get the data block
     // If it's not, then we panic and abort
     if (inode_number == 0) {
-        assert(inode->is_direct);
+        if (!inode->is_direct) {
+            _kpanic("not direct");
+        }
+        // assert(inode->is_direct);
     }
 
     File_s *file = (File_s *) inode->direct[inode_number];
 
-    sprint("Data in the block: %s", file->data_block);
+    char str[600];
+    sprint(str, "Data in the block: %s\n", file->data_block);
+    cwrites(str);
 }
 
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char block[SIZE_OF_DATA_BLOCK_DEC]) {
     // This will work similar to read. If the inode is not a direct pointer, then we panic
     // If it is direct, then we simply set the data block
     if (inode_number == 0) {
-        assert(inode->is_direct);
+        if (!inode->is_direct) {
+            _kpanic("not direct");
+        }
+        // assert(inode->is_direct);
     }
 
     File_s *file = (File_s *) inode->direct[inode_number];
@@ -260,33 +317,47 @@ void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char 
     //file->data_block = block;
     strcpy(file->data_block, block);
     char str[80];
-    sprint(str, "Data now in block: %s", file->data_block);
+    sprint(str, "Data now in block: %s\n", file->data_block);
     cwrites(str);
 }
 
 void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     if (inode_number == 0) {
-        assert(inode->is_direct);
+        if (!inode->is_direct) {
+            _kpanic("not direct");
+        }
+        // assert(inode->is_direct);
     }
 
     File_s *file = (File_s *) inode->direct[inode_number];
 
     char empty_block[SIZE_OF_DATA_BLOCK_DEC];
-    for (int i = 0; i < SIZE_OF_DATA_BLOCK_DEC; i++) {
+    for (int i = 0; i < SIZE_OF_DATA_BLOCK_DEC - 1; i++) {
         empty_block[i] = ' ';
     }
+    empty_block[SIZE_OF_DATA_BLOCK_DEC - 1] = '\0';
     
     //file->data_block = &empty_block[0];
     strcpy(file->data_block, empty_block);
 }
 
 Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
-    assert(!inode->is_direct);
+    char str[10];
+    sprint(str, "%08x, %02x\n", inode, inode->is_direct);
+    cwrites(str);
+
+    if (inode->is_direct) {
+        _kpanic("node is not a directory");
+    }
+    // assert(!inode->is_direct);
 
     fs->previous_inode = inode;
     fs->current_inode = (Inode_s *) inode->direct[0];
 
-    assert(fs->current_inode != NULL);
+    if (fs->current_inode == NULL) {
+        _kpanic("the current inode is not null");
+    }
+    // assert(fs->current_inode != NULL);
 
     // Return the first pointer if it's not direct, since that will move us to a new directory
     return fs->current_inode;
@@ -298,7 +369,7 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     cwrites(str);
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
-            sprint(str, "1. Directory: %s");
+            sprint(str, "1. Directory");
             cwrites(str);
         } else if (i == 0 && inode->is_direct && inode->direct[0] != NULL) {
             File_s *file = (File_s *)inode->direct[0];
