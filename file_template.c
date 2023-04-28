@@ -176,7 +176,6 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         list_s *free_node = fs->free_nodes;
         list_s *used_node = fs->used_blocks;
         list_s *node = NULL;
-        list_s *head = fs->used_blocks;
         bool_t found = false;
 
         while (used_node->next) {
@@ -207,11 +206,6 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         inode->num_of_pointers = inode->num_of_pointers - 1;
     } else {
         inode->direct[index] = NULL;
-
-        list_s *free_block = fs->free_blocks;
-        while (free_block->next) {
-            free_block = free_block->next;
-        }
 
         list_s *free_block = fs->free_blocks;
         list_s *used_block = fs->used_blocks;
