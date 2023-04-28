@@ -36,7 +36,7 @@ USERMAIN( idle ) {
     cwrites(str);
     // assert(fs != NULL);
     // Inode_s *inode = create_inode(fs, 0, false);
-    fs->current_inode = create_inode(fs, 0, false);
+    create_inode(fs, fs->current_inode, 0, false);
     sprint(str, "Test for inode: %d\n", fs->current_inode->size);
     cwrites(str);
     // assert(inode != NULL);
@@ -58,7 +58,7 @@ USERMAIN( idle ) {
 
     /* Create the first data block in the inode */
     index_into_inode = 1;
-    fs->current_inode->direct[index_into_inode] = create_data_block(fs, fs->current_inode, true, "first_file", block, index_into_inode);
+    create_data_block(fs, fs->current_inode, true, "first_file", block, index_into_inode);
     sprint(str, "Data block created!\n");
     cwrites(str);
     DELAY(LONG * 20);
@@ -77,21 +77,12 @@ USERMAIN( idle ) {
     inode_read(fs, fs->current_inode, index_into_inode);
     DELAY(LONG * 20);
 
-    /* Print the current working directory */
-    /*print_directory(fs, inode);
-    DELAY(LONG * 20);*/
-
     /* Create the next pointer to an inode in the working directory */
     index_into_inode = 0;
-    fs->current_inode->direct[index_into_inode] = create_inode(fs, index_into_inode, false);
+    create_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false);
     sprint(str, "Inode created!\n");
     cwrites(str);
     DELAY(LONG * 20);
-
-    /* Print the current working directory */
-    /*Inode_s *new_inode = (Inode_s *)(fs->current_inode->direct[0]);
-    print_directory(fs, new_inode);
-    DELAY(LONG * 20);*/
 
     /* Move directories to the new one that we made */
     fs->current_inode = move_in_directory(fs, fs->current_inode);
@@ -99,13 +90,9 @@ USERMAIN( idle ) {
     DELAY(LONG * 20);
     
     /* Create one more inode */
-    /*new_inode = (Inode_s *)inode->direct[0];
-    new_inode = create_inode(fs, 0, false);
-    print_directory(fs, new_inode);
-    DELAY(LONG * 20);*/
     index_into_inode = 0;
-    fs->current_inode->direct[index_into_inode] = create_inode(fs, index_into_inode, false);
-    print_directory(fs, fs->current_inode->direct[index_into_inode]);
+    create_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false);
+    print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
 
     /* Delete the inode pointer that we just created */

@@ -99,7 +99,7 @@ FileSystem_s* file_system_init (void);
  * @param new_inode - the node if it is indirect
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
-Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct);
+Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
 
 /**
  * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will

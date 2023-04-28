@@ -100,7 +100,7 @@ FileSystem_s* file_system_init (void) {
     return fs;
 }
 
-Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
+Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
     // assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
     // assert(strlen(name) <= 14);
     
@@ -108,7 +108,8 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
         _kpanic("no free nodes");
     }
 
-    list_s *new_node, *node;
+    list_s *new_node;
+    list_s *node;
 
     if (fs->used_nodes == NULL) {
         // Move the head of the free nodes list to the used node list, and make the next pointer NULL
@@ -133,7 +134,7 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
 
     node = (list_s *)(&fs->used_nodes);
     if (node == NULL) {
-        _kpanic("The new inode created is NULL");
+        _kpanic("The new inode created is NULL\n");
     }
 
     // This is printing C000000D as the new address. This is not correct since it is in the file system space now
@@ -150,6 +151,7 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
         accessed_node->direct[i] = NULL;
     }
 
+    inode = accessed_node;
     fs->num_free_nodes = fs->num_free_nodes - 1;
 
     return accessed_node;
@@ -255,40 +257,38 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
         // assert(is_direct)
     }
 
-    list_s *new_node = fs->free_blocks;
-    list_s *current;
+    list_s *new_node;
+    list_s *node;
 
     if (fs->used_blocks == NULL) {
-        fs->used_blocks = new_node;
-        fs->free_blocks = new_node->next;
-
-        current = fs->used_blocks;
+        new_node = fs->free_blocks;
+        new_node->next = NULL;
+        fs->used_nodes = new_node;
+        fs->free_nodes = fs->free_nodes->next;
     } else {
-        current = fs->used_blocks;
-        while (current->next) {
-            current = current->next;
-        }
-        current->next = new_node;
+        list_s *temp_node;
+        temp_node = fs->free_nodes;
+        new_node = fs->free_nodes;
+        temp_node = temp_node->next;
+        new_node->next = fs->used_nodes;
+        fs->used_nodes = new_node;
     }
 
-    if (current->next == NULL) {
-        _kpanic("next current node is null");
+    node = (list_s *)(&fs->used_nodes);
+    if (node == NULL) {
+        _kpanic("The new block created is NULL\n");
     }
-    // assert(current->next != NULL);
 
-    current = current->next;
-    File_s *accessed_node = (File_s *)(current->data);
+    File_s *accessed_node = (File_s *)(&node->data);
     // accessed_node->name = name;
     strcpy(accessed_node->name, name);
     accessed_node->file_index = index;
     // accessed_node->data_block = block;
     strcpy(accessed_node->data_block, block);
 
-    fs->free_blocks = new_node->next;
-
     fs->num_free_blocks = fs->num_free_blocks - 1;
 
-    inode->direct[index] = current;
+    inode->direct[index] = accessed_node;
     inode->num_of_pointers = inode->num_of_pointers + 1;
 
     return accessed_node;
