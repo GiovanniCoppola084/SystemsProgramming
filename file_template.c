@@ -108,7 +108,7 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
         _kpanic("no free nodes");
     }
 
-    list_s *new_node, *head;
+    list_s *new_node, *node;
 
     if (fs->used_nodes == NULL) {
         // Move the head of the free nodes list to the used node list, and make the next pointer NULL
@@ -123,29 +123,26 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
         new_node->next = head;
         head = new_node;*/
         // Insert current into head of linked list
-        list_s *temp_node1;
-        list_s *temp_node2;
-        temp_node1 = fs->used_nodes; // head of the used node list
-        temp_node2 = fs->free_nodes; // head of free node list
+        list_s *temp_node;
+        temp_node = fs->free_nodes; // head of free node list
         new_node = fs->free_nodes; // This will be the new head of the used_nodes
-        temp_node2 = temp_node2->next; // Move the free nodes down the list
+        temp_node = temp_node->next; // Move the free nodes down the list
         new_node->next = fs->used_nodes; // Set the new_node so it can become the head of the list
         fs->used_nodes = new_node; // Now make it the head of the list
     }
 
-    // This is printing C000000D as the new address. This is not correct since it is in the file system space now
-    char str[80];
-    sprint(str, "Address of new node: %08x\n", new_node);
-    cwrites(str);
-
-    // assert(current->next != NULL);
-    if (new_node == NULL) {
-        _kpanic("no free nodes");
+    node = (list_s *)(&fs->used_nodes);
+    if (node == NULL) {
+        _kpanic("The new inode created is NULL");
     }
 
+    // This is printing C000000D as the new address. This is not correct since it is in the file system space now
+    char str[80];
+    sprint(str, "Address of new node: %08x\n", node);
+    cwrites(str);
+
     // current = current->next;
-    Inode_s *accessed_node = (Inode_s *)(&head->data);
-    // &accessed_node = &current->data;
+    Inode_s *accessed_node = (Inode_s *)(&node->data);
     accessed_node->size = 5;
     accessed_node->num_of_pointers = 0;
 
@@ -153,13 +150,8 @@ Inode_s *create_inode(FileSystem_s *fs, uint8_t index, bool_t is_direct) {
         accessed_node->direct[i] = NULL;
     }
 
-    fs->free_nodes = new_node->next;
-
     fs->num_free_nodes = fs->num_free_nodes - 1;
 
-    /*Inode_s *node = (Inode_s *)(current->data);
-    node->num_of_pointers = 0;
-    return node;*/
     return accessed_node;
 }
 
