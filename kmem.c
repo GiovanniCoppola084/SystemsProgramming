@@ -152,9 +152,6 @@ typedef struct memregion_s {
 #define ADDR_LOW_HALF   0x00000000ffffffffLL
 #define ADDR_HIGH_HALR  0xffffffff00000000LL
 
-#define USERLAND_FILE_ADDRESS_START 0xC0000000
-#define USRELAND_FILE_ADDRESS_END 0xffffffff
-
 #define ADDR_32_MAX     ADDR_LOW_HALF
 #define ADDR_64_FIRST   ADDR_BIT_32
 

@@ -16,7 +16,7 @@
 #include "file_template.h"
 
 FileSystem_s* file_system_init (void) {
-    FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START + 0x1);
+    FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START);
 
     // Set the initial number of blocks
     // Implicit conversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 960 to 192
@@ -109,7 +109,6 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     }
 
     list_s *new_node;
-    list_s *node;
 
     if (fs->used_nodes == NULL) {
         // Move the head of the free nodes list to the used node list, and make the next pointer NULL
@@ -132,7 +131,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         fs->used_nodes = new_node; // Now make it the head of the list
     }
 
-    node = (list_s *)(&fs->used_nodes);
+    list_s *node = (list_s *)(fs->used_nodes);
     if (node == NULL) {
         _kpanic("The new inode created is NULL\n");
     }
@@ -372,20 +371,26 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     sprint(str, "Current working director: \n");
     cwrites(str);
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
+        sprint(str, "i: %d, node: %c", i, inode->is_direct);
+        cwrites(str);
+
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
-            sprint(str, "1. Directory");
+            sprint(str, "1. Directory\n");
             cwrites(str);
         } else if (i == 0 && inode->is_direct && inode->direct[0] != NULL) {
             File_s *file = (File_s *)inode->direct[0];
-            sprint(str, "1. File: %s", file->name);
+            sprint(str, "1. File: %s\n", file->name);
             cwrites(str);
         }
 
         if (i > 0 && inode->direct[i] != NULL) {
             File_s *file = (File_s *)inode->direct[i];
-            sprint(str, "%d. File: %s", (i + 1), file->name);
+            sprint(str, "%d. File: %s\n", (i + 1), file->name);
             cwrites(str);
         }
+
+        sprint(str, "Here");
+        cwrites(str);
     }
 
     sprint(str, "Total inodes in use: %d\n", (TOTAL_NUM_OF_INODES - fs->num_free_nodes));

@@ -26,7 +26,7 @@
 #include "kernel.h"
 
 /*File address space start and end*/
-#define USERLAND_FILE_ADDRESS_START 0xC0000000
+#define USERLAND_FILE_ADDRESS_START 0xC0000001
 #define USERLAND_FILE_ADDRESS_END 0xffffffff
 
 /*Sizes for data blocks*/
