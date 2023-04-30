@@ -48,11 +48,6 @@ uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
             current->next = new_node;
         }
 
-        char str[80];
-        sprint(str, "Address of new alloc free node: %08x\n", new_node);
-        cwrites(str);
-        DELAY(LONG * 5);
-
         // Move to the next inode space
         current_address = current_address + SIZE_OF_INODES_HEX;
     }
@@ -142,7 +137,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     }
 
     char test[80];
-    sprint(test, "Address free list nodes: %08x", fs->free_nodes);
+    sprint(test, "Address free list nodes: %08x\n", fs->free_nodes);
     cwrites(test);
 
     list_s *node = (list_s *)(fs->used_nodes);
@@ -150,7 +145,6 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         _kpanic("The new inode created is NULL\n");
     }
 
-    // This is printing C000000D as the new address. This is not correct since it is in the file system space now
     char str[80];
     sprint(str, "Address of new node: %08x\n", node);
     cwrites(str);
@@ -205,10 +199,11 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     }
 
     char test[80];
-    sprint(test, "Address free list blocks: %08x", fs->free_blocks);
+    sprint(test, "Address free list blocks: %08x\n", fs->free_blocks);
     cwrites(test);
+    DELAY(LONG * 20);
 
-    list_s *node = (list_s *)(&fs->used_blocks);
+    list_s *node = (list_s *)(fs->used_blocks);
     if (node == NULL) {
         _kpanic("The new block created is NULL\n");
     }
@@ -222,12 +217,13 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
 
     fs->num_free_blocks = fs->num_free_blocks - 1;
 
-    fs->current_inode->direct[index] = accessed_node;
     inode->num_of_pointers = inode->num_of_pointers + 1;
+
+    inode->direct[index] = accessed_node;
 
     /* Print that the data block was created successfully */
     char str[100];
-    sprint(str, "Data block created: %08x\n", fs->current_inode->direct[index]);
+    sprint(str, "Data block created: %08x\n", inode->direct[index]);
     cwrites(str);
     DELAY(LONG * 20);
 
@@ -385,8 +381,8 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
 }
 
 Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
-    char str[10];
-    sprint(str, "%08x, %02x\n", inode, inode->is_direct);
+    char str[20];
+    sprint(str, "%08x, %c\n", inode, inode->is_direct);
     cwrites(str);
 
     if (inode->is_direct) {
@@ -408,7 +404,7 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
 
 void print_directory (FileSystem_s *fs, Inode_s *inode) {
     char str[80];
-    sprint(str, "Current working director: \n");
+    sprint(str, "Current working directory. Direct: %c\n", inode->is_direct);
     cwrites(str);
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
