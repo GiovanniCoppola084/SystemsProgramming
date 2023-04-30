@@ -38,6 +38,7 @@ uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
         new_node->next = NULL;
 
         if (fs->free_nodes == NULL) {
+            // fs->free_nodes = (list_s *)current_address;
             fs->free_nodes = new_node;
         } else {
             list_s *current = fs->free_nodes;
@@ -47,8 +48,13 @@ uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
             current->next = new_node;
         }
 
+        char str[80];
+        sprint(str, "Address of new alloc free node: %08x\n", new_node);
+        cwrites(str);
+        DELAY(LONG * 5);
+
         // Move to the next inode space
-        current_address = current_address + SIZE_OF_INODES_HEX + 0x1;
+        current_address = current_address + SIZE_OF_INODES_HEX;
     }
 
     // Set the used nodes to null since we wont be using any at init
@@ -82,7 +88,7 @@ uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address) {
         }
     
         // Move to the next data block space
-        current_address = current_address + SIZE_OF_FILE_HEX + 0x1;
+        current_address = current_address + SIZE_OF_FILE_HEX;
     }
 
     fs->used_blocks = NULL;
@@ -122,23 +128,22 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     if (fs->used_nodes == NULL) {
         // Move the head of the free nodes list to the used node list, and make the next pointer NULL
         new_node = fs->free_nodes; // Set the new node to be a free node
+        fs->free_nodes = fs->free_nodes->next; // Move the free list down a pointer
         new_node->next = NULL; // Set the nodes next to be NULL since the list was already empty
         fs->used_nodes = new_node; // Set the used nodes to the new node
-        fs->free_nodes = fs->free_nodes->next; // Move the free list down a pointer
     } else {
         // Insert current into head of linked list
         list_s *temp_node;
         temp_node = fs->free_nodes;
         new_node = fs->free_nodes;
-        temp_node = temp_node->next;
         new_node->next = fs->used_nodes;
         fs->used_nodes = new_node;
-
-        /*new_node = fs->free_nodes; // This will be the new head of the used_nodes
-        fs->free_nodes = fs->free_nodes->next;
-        new_node->next = fs->used_nodes; // Set the new_node so it can become the head of the list
-        fs->used_nodes = new_node; // Now make it the head of the list*/
+        temp_node = temp_node->next;
     }
+
+    char test[80];
+    sprint(test, "Address free list nodes: %08x", fs->free_nodes);
+    cwrites(test);
 
     list_s *node = (list_s *)(fs->used_nodes);
     if (node == NULL) {
@@ -187,21 +192,21 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
 
     if (fs->used_blocks == NULL) {
         new_node = fs->free_blocks;
+        fs->free_blocks = fs->free_blocks->next;
         new_node->next = NULL;
         fs->used_blocks = new_node;
-        fs->free_blocks = fs->free_blocks->next;
     } else {
         list_s *temp_node;
         temp_node = fs->free_blocks;
         new_node = fs->free_blocks;
+        new_node->next = fs->used_blocks;
+        fs->used_blocks = new_node;
         temp_node = temp_node->next;
-        new_node->next = fs->used_blocks;
-        fs->used_blocks = new_node;
-        /*new_node = fs->free_blocks;
-        new_node->next = fs->used_blocks;
-        fs->used_blocks = new_node;
-        fs->free_blocks = fs->free_blocks->next;*/
     }
+
+    char test[80];
+    sprint(test, "Address free list blocks: %08x", fs->free_blocks);
+    cwrites(test);
 
     list_s *node = (list_s *)(&fs->used_blocks);
     if (node == NULL) {

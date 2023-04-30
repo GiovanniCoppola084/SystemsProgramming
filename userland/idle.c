@@ -37,8 +37,8 @@ USERMAIN( idle ) {
     // assert(fs != NULL);
     // Inode_s *inode = create_inode(fs, 0, false);
     create_inode(fs, fs->current_inode, 0, false);
-    sprint(str, "Test for inode: %d\n", fs->current_inode->size);
-    cwrites(str);
+    // sprint(str, "Test for inode: %d\n", fs->current_inode->size);
+    // cwrites(str);
     // assert(inode != NULL);
 
     print_directory(fs, fs->current_inode);
@@ -67,7 +67,7 @@ USERMAIN( idle ) {
 
     /* Create the next pointer to an inode in the working directory */
     index_into_inode = 0;
-    create_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false);
+    create_inode(fs, (Inode_s *)(fs->current_inode->direct[index_into_inode]), index_into_inode, false);
     sprint(str, "Inode created!\n");
     cwrites(str);
     DELAY(LONG * 20);
