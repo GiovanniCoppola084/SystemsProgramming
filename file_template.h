@@ -82,6 +82,10 @@ typedef struct FileSystem_s {
     Inode_s *previous_inode; // The previous inode (one directory level up)
 } FileSystem_s; // 28 bytes
 
+uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address);
+
+uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address);
+
 /**
 * Make an init function that will add the addresses to the free lists in the file system and set the counts
 */
@@ -100,17 +104,6 @@ FileSystem_s* file_system_init (void);
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
 Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
-
-/**
- * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
- *        work for an indirect or direct pointer
- * 
- * @param fs - the file system structure
- * @param inode - the inode the user wants to delete (if indirect)
- * @param index - the index of the direct pointer
- * @param is_direct - if the index is at 0, then check if it is direct or indirect
- */
-void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
 
 /**
  * @brief Create a data block object and return it in the list object
@@ -143,6 +136,21 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
  * @param block - the data block being sent into the inode
  */
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char *block);
+
+void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index);
+
+void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index);
+
+/**
+ * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
+ *        work for an indirect or direct pointer
+ * 
+ * @param fs - the file system structure
+ * @param inode - the inode the user wants to delete (if indirect)
+ * @param index - the index of the direct pointer
+ * @param is_direct - if the index is at 0, then check if it is direct or indirect
+ */
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
 
 /**
  * @brief Set the data block of an inode to be all spaces (empty characters) when the user wants

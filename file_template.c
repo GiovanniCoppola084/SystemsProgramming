@@ -15,18 +15,10 @@
 
 #include "file_template.h"
 
-FileSystem_s* file_system_init (void) {
-    FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START);
-
-    // Set the initial number of blocks
-    // Implicit conversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 960 to 192
-    fs->num_free_blocks = MAX_NUM_OF_DATA_BLOCKS;
-    // Set the initial number of free nodes
-    fs->num_free_nodes = TOTAL_NUM_OF_INODES;
-
+uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
     // Add inode sector given the size of the inodes
     // This is the start plus the 16 bits for the file systems struct
-    uint32_t current_address = USERLAND_FILE_ADDRESS_START +  SIZE_OF_FILE_SYSTEM_HEX + 0x1;
+    current_address = USERLAND_FILE_ADDRESS_START +  SIZE_OF_FILE_SYSTEM_HEX + 0x1;
 
     // Set the free nodes to be the head of the list now
     fs->free_nodes = NULL;
@@ -62,9 +54,10 @@ FileSystem_s* file_system_init (void) {
     // Set the used nodes to null since we wont be using any at init
     fs->used_nodes = NULL;
 
-    // Move it up one byte plus the size of an inode to get into the block space
-    // current_address = current_address + SIZE_OF_INODES_HEX + 0x1;
+    return current_address;
+}
 
+uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address) {
     fs->free_blocks = NULL;
 
     for (int i = 0; i < MAX_NUM_OF_DATA_BLOCKS; i++) {
@@ -94,6 +87,22 @@ FileSystem_s* file_system_init (void) {
 
     fs->used_blocks = NULL;
 
+    return current_address;
+}
+
+FileSystem_s* file_system_init (void) {
+    FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START);
+
+    // Set the initial number of blocks
+    // Implicit conversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 960 to 192
+    fs->num_free_blocks = MAX_NUM_OF_DATA_BLOCKS;
+    // Set the initial number of free nodes
+    fs->num_free_nodes = TOTAL_NUM_OF_INODES;
+
+    uint32_t current_address = init_inodes(fs, NULL);
+
+    current_address = init_data_blocks(fs, current_address);
+
     fs->current_inode = NULL;
     fs->previous_inode = NULL;
 
@@ -117,18 +126,18 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         fs->used_nodes = new_node; // Set the used nodes to the new node
         fs->free_nodes = fs->free_nodes->next; // Move the free list down a pointer
     } else {
-        /*new_node = (list_s *)(&fs->used_nodes);
-        new_node = fs->used_nodes;
-        head = fs->used_nodes;
-        new_node->next = head;
-        head = new_node;*/
         // Insert current into head of linked list
         list_s *temp_node;
-        temp_node = fs->free_nodes; // head of free node list
-        new_node = fs->free_nodes; // This will be the new head of the used_nodes
-        temp_node = temp_node->next; // Move the free nodes down the list
+        temp_node = fs->free_nodes;
+        new_node = fs->free_nodes;
+        temp_node = temp_node->next;
+        new_node->next = fs->used_nodes;
+        fs->used_nodes = new_node;
+
+        /*new_node = fs->free_nodes; // This will be the new head of the used_nodes
+        fs->free_nodes = fs->free_nodes->next;
         new_node->next = fs->used_nodes; // Set the new_node so it can become the head of the list
-        fs->used_nodes = new_node; // Now make it the head of the list
+        fs->used_nodes = new_node; // Now make it the head of the list*/
     }
 
     list_s *node = (list_s *)(fs->used_nodes);
@@ -143,98 +152,22 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
 
     // current = current->next;
     Inode_s *accessed_node = (Inode_s *)(&node->data);
-    accessed_node->size = 5;
+    // accessed_node->size = SIZE_OF_DATA_BLOCK_DEC;
     accessed_node->num_of_pointers = 0;
 
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         accessed_node->direct[i] = NULL;
     }
 
-    inode = accessed_node;
+    fs->current_inode = accessed_node;
     fs->num_free_nodes = fs->num_free_nodes - 1;
 
+    /* Print that the inode was created successfully */
+    sprint(str, "Inode created: %08x\n", fs->current_inode);
+    cwrites(str);
+    DELAY(LONG * 20);
+
     return accessed_node;
-}
-
-void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
-    // Get the node and delete it from the list. We need to search by name since we don't have the lis
-    // Once it's found, check if it's direct or indirect
-
-    // assert(fs->free_blocks != NULL);
-    if (fs->free_blocks == NULL) {
-        _kpanic("no free nodes");
-    }
-    // assert(inode != NULL);
-    if (inode == NULL) {
-        _kpanic("no free nodes");
-    }
-    
-    if (!is_direct) {
-        inode->direct[index] = NULL;
-        
-        list_s *free_node = fs->free_nodes;
-        list_s *used_node = fs->used_blocks;
-        list_s *node = NULL;
-        bool_t found = false;
-
-        while (used_node->next) {
-            // Is this the right way to type cast in this case?
-            if (((Inode_s *)(used_node->data)) == inode) {
-                // free_node->next = used_node;
-                found = true;
-                break;
-            }
-            node = used_node;
-            used_node = used_node->next;
-        }
-
-        if (found == false) {
-            _kpanic("not found");
-        }
-        // assert(found == true);
-        // assert(free_node->next != NULL);
-
-        list_s *temp = node; // Set the temp variable
-        temp->data = NULL; // Set the data in temp to NULL
-        temp->next = free_node; // Set temps next variable to the head of the free list (now the new head)
-        fs->free_nodes = temp; // Set the free nodes to the new list
-        node->next = used_node->next; // Remove the node from the used blocks list
-
-        // Update the number of pointers
-        fs->num_free_nodes = fs->num_free_nodes + 1;
-        inode->num_of_pointers = inode->num_of_pointers - 1;
-    } else {
-        inode->direct[index] = NULL;
-
-        list_s *free_block = fs->free_blocks;
-        list_s *used_block = fs->used_blocks;
-        list_s *node = NULL;
-        bool_t found = false;
-        while (used_block->next) {
-            if (((Inode_s *)(used_block->data)) == inode) {
-                found = true;
-                break;
-            }
-            node = used_block;
-            used_block = used_block->next;
-        }
-
-        if (found == false) {
-            _kpanic("not found");
-        }
-        // assert(found == true);
-        // assert(free_block->next != NULL);
-
-        list_s *temp = node; // Set the temp variable
-        temp->data = NULL; // Set the data in temp to NULL
-        temp->next = free_block; // Set temps next variable to the head of the free list (now the new head)
-        fs->free_blocks = temp; // Set the free nodes to the new list
-        node->next = used_block->next; // Remove the node from the used blocks list
-
-        // Update the number of pointers
-        fs->num_free_blocks = fs->num_free_blocks + 1;
-        inode->num_of_pointers = inode->num_of_pointers - 1;
-    }
 }
 
 File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
@@ -251,23 +184,26 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     }
 
     list_s *new_node;
-    list_s *node;
 
     if (fs->used_blocks == NULL) {
         new_node = fs->free_blocks;
         new_node->next = NULL;
-        fs->used_nodes = new_node;
-        fs->free_nodes = fs->free_nodes->next;
+        fs->used_blocks = new_node;
+        fs->free_blocks = fs->free_blocks->next;
     } else {
         list_s *temp_node;
-        temp_node = fs->free_nodes;
-        new_node = fs->free_nodes;
+        temp_node = fs->free_blocks;
+        new_node = fs->free_blocks;
         temp_node = temp_node->next;
-        new_node->next = fs->used_nodes;
-        fs->used_nodes = new_node;
+        new_node->next = fs->used_blocks;
+        fs->used_blocks = new_node;
+        /*new_node = fs->free_blocks;
+        new_node->next = fs->used_blocks;
+        fs->used_blocks = new_node;
+        fs->free_blocks = fs->free_blocks->next;*/
     }
 
-    node = (list_s *)(&fs->used_nodes);
+    list_s *node = (list_s *)(&fs->used_blocks);
     if (node == NULL) {
         _kpanic("The new block created is NULL\n");
     }
@@ -281,8 +217,14 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
 
     fs->num_free_blocks = fs->num_free_blocks - 1;
 
-    inode->direct[index] = accessed_node;
+    fs->current_inode->direct[index] = accessed_node;
     inode->num_of_pointers = inode->num_of_pointers + 1;
+
+    /* Print that the data block was created successfully */
+    char str[100];
+    sprint(str, "Data block created: %08x\n", fs->current_inode->direct[index]);
+    cwrites(str);
+    DELAY(LONG * 20);
 
     return accessed_node;
 }
@@ -342,6 +284,99 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
     
     //file->data_block = &empty_block[0];
     strcpy(file->data_block, empty_block);
+
+    cwrites("Data in block has been deleted!\n");
+}
+
+void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
+    inode->direct[index] = NULL;
+        
+    list_s *free_node = fs->free_nodes;
+    list_s *used_node = fs->used_blocks;
+    list_s *node = NULL;
+    bool_t found = false;
+    
+    while (used_node->next) {
+        // Is this the right way to type cast in this case?
+        if (((Inode_s *)(used_node->data)) == inode) {
+            // free_node->next = used_node;
+            found = true;
+            break;
+        }
+        node = used_node;
+        used_node = used_node->next;
+    }
+
+    if (found == false) {
+        _kpanic("not found");
+    }
+    // assert(found == true);
+    // assert(free_node->next != NULL);
+
+    list_s *temp = node; // Set the temp variable
+    temp->data = NULL; // Set the data in temp to NULL
+    temp->next = free_node; // Set temps next variable to the head of the free list (now the new head)
+    fs->free_nodes = temp; // Set the free nodes to the new list
+    node->next = used_node->next; // Remove the node from the used blocks list
+
+    // Update the number of pointers
+    fs->num_free_nodes = fs->num_free_nodes + 1;
+    inode->num_of_pointers = inode->num_of_pointers - 1;
+}
+
+void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
+    inode->direct[index] = NULL;
+
+    list_s *free_block = fs->free_blocks;
+    list_s *used_block = fs->used_blocks;
+    list_s *node = NULL;
+    bool_t found = false;
+    while (used_block->next) {
+        if (((Inode_s *)(used_block->data)) == inode) {
+            found = true;
+            break;
+        }
+        node = used_block;
+        used_block = used_block->next;
+    }
+
+    if (found == false) {
+        _kpanic("not found");
+    }
+    // assert(found == true);
+    // assert(free_block->next != NULL);
+
+    list_s *temp = node; // Set the temp variable
+    temp->data = NULL; // Set the data in temp to NULL
+    temp->next = free_block; // Set temps next variable to the head of the free list (now the new head)
+    fs->free_blocks = temp; // Set the free nodes to the new list
+    node->next = used_block->next; // Remove the node from the used blocks list
+
+    // Update the number of pointers
+    fs->num_free_blocks = fs->num_free_blocks + 1;
+    inode->num_of_pointers = inode->num_of_pointers - 1;
+}
+
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
+    // Get the node and delete it from the list. We need to search by name since we don't have the lis
+    // Once it's found, check if it's direct or indirect
+
+    // assert(fs->free_blocks != NULL);
+    if (fs->free_blocks == NULL) {
+        _kpanic("no free nodes");
+    }
+    // assert(inode != NULL);
+    if (inode == NULL) {
+        _kpanic("no free nodes");
+    }
+    
+    if (!is_direct) {
+        delete_inode_pointer(fs, inode, index);
+    } else {
+        delete_data_block_pointer(fs, inode, index);
+    }
+
+    cwrites("Pointer in the inode has been deleted!\n");
 }
 
 Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
@@ -355,10 +390,10 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     // assert(!inode->is_direct);
 
     fs->previous_inode = inode;
-    fs->current_inode = (Inode_s *) inode->direct[0];
+    fs->current_inode = (Inode_s *)(inode->direct[0]);
 
     if (fs->current_inode == NULL) {
-        _kpanic("the current inode is not null");
+        _kpanic("the current inode is null");
     }
     // assert(fs->current_inode != NULL);
 
@@ -371,26 +406,23 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     sprint(str, "Current working director: \n");
     cwrites(str);
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
-        sprint(str, "i: %d, node: %c", i, inode->is_direct);
-        cwrites(str);
-
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
+            cwrites("First one\n");
             sprint(str, "1. Directory\n");
             cwrites(str);
         } else if (i == 0 && inode->is_direct && inode->direct[0] != NULL) {
+            cwrites("Second one\n");
             File_s *file = (File_s *)inode->direct[0];
             sprint(str, "1. File: %s\n", file->name);
             cwrites(str);
         }
 
         if (i > 0 && inode->direct[i] != NULL) {
-            File_s *file = (File_s *)inode->direct[i];
-            sprint(str, "%d. File: %s\n", (i + 1), file->name);
-            cwrites(str);
+            // File_s *file = (File_s *)(inode->direct[i]);
+            cwrites("Name printed here\n");
+            // sprint(str, "%d. File: %s\n", (i + 1), file->name);
+            // cwrites(str);
         }
-
-        sprint(str, "Here");
-        cwrites(str);
     }
 
     sprint(str, "Total inodes in use: %d\n", (TOTAL_NUM_OF_INODES - fs->num_free_nodes));

@@ -41,11 +41,6 @@ USERMAIN( idle ) {
     cwrites(str);
     // assert(inode != NULL);
 
-    /* Print that the inode was created successfully */
-    sprint(str, "Inode created!\n");
-    cwrites(str);
-    DELAY(LONG * 20);
-
     print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
 
@@ -58,10 +53,7 @@ USERMAIN( idle ) {
 
     /* Create the first data block in the inode */
     index_into_inode = 1;
-    create_data_block(fs, fs->current_inode, true, "first_file", block, index_into_inode);
-    sprint(str, "Data block created!\n");
-    cwrites(str);
-    DELAY(LONG * 20);
+    create_data_block(fs, fs->current_inode, true, "first_file\0", block, index_into_inode);
     
     /* Read the inode data that we just input */
     inode_read(fs, fs->current_inode, index_into_inode);
@@ -69,10 +61,6 @@ USERMAIN( idle ) {
 
     /* Delete the data that was in the data block */
     inode_delete_data(fs, fs->current_inode, index_into_inode);
-    sprint(str, "Block data deleted!\n");
-    cwrites(str);
-    DELAY(LONG * 20);
-
     /* Reprint the data that should be all spaces */
     inode_read(fs, fs->current_inode, index_into_inode);
     DELAY(LONG * 20);
