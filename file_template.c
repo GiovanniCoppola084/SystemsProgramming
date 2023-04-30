@@ -130,7 +130,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         // Insert current into head of linked list
         list_s *temp_node;
         temp_node = fs->free_nodes;
-        new_node = fs->free_nodes;
+        new_node = fs->free_nodes->next;
         new_node->next = fs->used_nodes;
         fs->used_nodes = new_node;
         temp_node = temp_node->next;
@@ -139,6 +139,11 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     char test[80];
     sprint(test, "Address free list nodes: %08x\n", fs->free_nodes);
     cwrites(test);
+
+    sprint(test, "Address used list nodes: %08x\n", fs->used_nodes);
+    cwrites(test);
+
+    DELAY(LONG * 20);
 
     list_s *node = (list_s *)(fs->used_nodes);
     if (node == NULL) {
@@ -153,6 +158,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     Inode_s *accessed_node = (Inode_s *)(&node->data);
     // accessed_node->size = SIZE_OF_DATA_BLOCK_DEC;
     accessed_node->num_of_pointers = 0;
+    accessed_node->is_direct = false;
 
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         accessed_node->direct[i] = NULL;
@@ -192,7 +198,7 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     } else {
         list_s *temp_node;
         temp_node = fs->free_blocks;
-        new_node = fs->free_blocks;
+        new_node = fs->free_blocks->next;
         new_node->next = fs->used_blocks;
         fs->used_blocks = new_node;
         temp_node = temp_node->next;
@@ -404,8 +410,13 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
 
 void print_directory (FileSystem_s *fs, Inode_s *inode) {
     char str[80];
-    sprint(str, "Current working directory. Direct: %c\n", inode->is_direct);
-    cwrites(str);
+
+    if (inode->is_direct) {
+        cwrites("Is direct!\n");
+    } else {
+        cwrites("Is not direct!\n");
+    }
+
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
             cwrites("First one\n");
