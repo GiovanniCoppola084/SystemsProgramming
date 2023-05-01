@@ -1,20 +1,19 @@
-/*
-** SCCS ID: @(#)file_template.h	3/23/2023
-**
-** File:    file_template.h
-**
-** Authors: Gino Coppola
-**
-** Description: My take on a Unix V7 file structure using RAM disk in our operating system
-** 
-** https://www.cs.rit.edu/~wrc/courses/common/notes/csci452/
-** https://learn.microsoft.com/en-us/troubleshoot/windows-client/backup-and-storage/fat-hpfs-and-ntfs-file-systems
-** https://github.com/v7unix/v7unix
-** https://www.tuhs.org/cgi-bin/utree.pl?file=V7
-** https://github.com/darshank15/Inode-based-file-system/blob/master/inode.h
-** https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/include/sys
-** https://www3.nd.edu/~pbui/teaching/cse.30341.fa18/project06.html
-*/
+// 
+// File: file_template.h 
+// Description: My take on a Unix V7 file structure using RAM disk in our operating system
+//
+// @author Gino Coppola
+//
+// References used for helping with making this project:
+//      https://www.cs.rit.edu/~wrc/courses/common/notes/csci452/
+//      https://learn.microsoft.com/en-us/troubleshoot/windows-client/backup-and-storage/fat-hpfs-and-ntfs-file-systems
+//      https://github.com/v7unix/v7unix
+//      https://www.tuhs.org/cgi-bin/utree.pl?file=V7
+//      https://github.com/darshank15/Inode-based-file-system/blob/master/inode.h
+//      https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/include/sys
+//      https://www3.nd.edu/~pbui/teaching/cse.30341.fa18/project06.html
+//
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
 
 #ifndef _FILE_TEMPLATE_H_
 #define _FILE_TEMPLATE_H_
@@ -82,13 +81,31 @@ typedef struct FileSystem_s {
     Inode_s *previous_inode; // The previous inode (one directory level up)
 } FileSystem_s; // 28 bytes
 
+/**
+ * @brief Initialize all of the inode into memory. This will loop through one by one and add the 
+ *        appropriate amount of inodes to the linked list in memory
+ * 
+ * @param fs - the file system structure
+ * @param current_address - the variable that will store the address of the node to be allocated in
+ * @return uint32_t - the next address that will be used by the data blocks init
+ */
 uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address);
 
+/**
+ * @brief Initialize all of the data blocks into memory, similar to the way the data blocks do it
+ * 
+ * @param fs - the file system structure
+ * @param current_address - the variable that will store the address of the node to be allocated in
+ * @return uint32_t - the last address that was allocated for the data blocks
+ */
 uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address);
 
 /**
-* Make an init function that will add the addresses to the free lists in the file system and set the counts
-*/
+ * @brief Call the inits for the inodes and the data blocks, as well as setting the counts and current/
+ *        previous node pointers in the file system structure
+ * 
+ * @return FileSystem_s* - the baseline file system that will be used for the rest of the run time
+ */
 FileSystem_s* file_system_init (void);
 
 /**
@@ -137,8 +154,22 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
  */
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char *block);
 
+/**
+ * @brief Delete an inode pointer and return it to the free list of memory
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param index - the index of the inode
+ */
 void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index);
 
+/**
+ * @brief Delete a data block pointer and return it to the free list of memory
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param index - the index of the inode
+ */
 void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index);
 
 /**

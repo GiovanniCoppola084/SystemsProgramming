@@ -1,20 +1,27 @@
-/*
-** SCCS ID: @(#)file_template.h	3/23/2023
-**
-** File:    file_template.c
-**
-** Authors: Gino Coppola
-**
-** Description: Function definitions for the Unix V7 based file system for our OS.
-**              This file includes the methods to initialize the file system, create and
-**              delete both inodes and data blocks, write/read from data blocks,
-**              move into directories, and print information about the current 
-**              working directory. 
-** 
-*/
+// 
+// File: file_template.h 
+// Description: My take on a Unix V7 file structure using RAM disk in our operating system
+//
+// @author Gino Coppola
+//
+// Description: Function definitions for the Unix V7 based file system for our OS.
+//              This file includes the methods to initialize the file system, create and
+//              delete both inodes and data blocks, write/read from data blocks,
+//              move into directories, and print information about the current 
+//              working directory. 
+// 
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
 
 #include "file_template.h"
 
+/**
+ * @brief Initialize all of the inode into memory. This will loop through one by one and add the 
+ *        appropriate amount of inodes to the linked list in memory
+ * 
+ * @param fs - the file system structure
+ * @param current_address - the variable that will store the address of the node to be allocated in
+ * @return uint32_t - the next address that will be used by the data blocks init
+ */
 uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
     // Add inode sector given the size of the inodes
     // This is the start plus the 16 bits for the file systems struct
@@ -58,6 +65,13 @@ uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
     return current_address;
 }
 
+/**
+ * @brief Initialize all of the data blocks into memory, similar to the way the data blocks do it
+ * 
+ * @param fs - the file system structure
+ * @param current_address - the variable that will store the address of the node to be allocated in
+ * @return uint32_t - the last address that was allocated for the data blocks
+ */
 uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address) {
     fs->free_blocks = NULL;
 
@@ -91,6 +105,12 @@ uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address) {
     return current_address;
 }
 
+/**
+ * @brief Call the inits for the inodes and the data blocks, as well as setting the counts and current/
+ *        previous node pointers in the file system structure
+ * 
+ * @return FileSystem_s* - the baseline file system that will be used for the rest of the run time
+ */
 FileSystem_s* file_system_init (void) {
     FileSystem_s *fs = (FileSystem_s *) (USERLAND_FILE_ADDRESS_START);
 
@@ -110,6 +130,18 @@ FileSystem_s* file_system_init (void) {
     return fs;
 }
 
+/**
+ * @brief When the user wants to create an inode, it will take a block off the free list and allocate it in the used list.
+ *        I will possibly add a function to add an indirect pointer in, but not for now.
+ * 
+ * @param fs - the file system structure
+ * @param name - the name of the inode if they want to create one
+ * @param block - the block that will go in the inode if they make a direct one
+ * @param index - the index into the array of pointers in the inode
+ * @param is_direct - if the node will be direct or indirect
+ * @param new_inode - the node if it is indirect
+ * @return Inode_s* - the node that was created for the user and added into the file system
+ */
 Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
     // assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
     // assert(strlen(name) <= 14);
@@ -175,6 +207,17 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     return accessed_node;
 }
 
+/**
+ * @brief Create a data block object and return it in the list object
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param is_direct - if the node being added is direct or indirect
+ * @param name - the name of the file that will be created
+ * @param block - the block if it is direct
+ * @param index - the index to say where to add the node in
+ * @return list_s* 
+ */
 File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
     if (fs->free_blocks == NULL) {
         _kpanic("no free blocks");
@@ -236,6 +279,13 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     return accessed_node;
 }
 
+/**
+ * @brief Read the data block from the current working directory. Check to make sure if the index is at 0, then it's direct
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param inode_number - the index of the data block to read from
+ */
 void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     // This will be accessing the data block in a file, rather than accessing another inode
     // So if the mode bit tells you that it is a direct pointer, get the data block
@@ -254,6 +304,14 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     cwrites(str);
 }
 
+/**
+ * @brief Send a data block to an inode in the current working directory
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param inode_number - the index of the data block to write into
+ * @param block - the data block being sent into the inode
+ */
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char block[SIZE_OF_DATA_BLOCK_DEC]) {
     // This will work similar to read. If the inode is not a direct pointer, then we panic
     // If it is direct, then we simply set the data block
@@ -273,6 +331,13 @@ void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char 
     cwrites(str);
 }
 
+/**
+ * @brief Delete an inode pointer and return it to the free list of memory
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param index - the index of the inode
+ */
 void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     if (inode_number == 0) {
         if (!inode->is_direct) {
@@ -295,6 +360,13 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
     cwrites("Data in block has been deleted!\n");
 }
 
+/**
+ * @brief Delete a data block pointer and return it to the free list of memory
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param index - the index of the inode
+ */
 void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
     inode->direct[index] = NULL;
         
@@ -331,6 +403,15 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
     inode->num_of_pointers = inode->num_of_pointers - 1;
 }
 
+/**
+ * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
+ *        work for an indirect or direct pointer
+ * 
+ * @param fs - the file system structure
+ * @param inode - the inode the user wants to delete (if indirect)
+ * @param index - the index of the direct pointer
+ * @param is_direct - if the index is at 0, then check if it is direct or indirect
+ */
 void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
     inode->direct[index] = NULL;
 
@@ -364,6 +445,13 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) 
     inode->num_of_pointers = inode->num_of_pointers - 1;
 }
 
+/**
+ * @brief Set the data block of an inode to be all spaces (empty characters) when the user wants
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @param inode_number - the index of the data block to delete
+ */
 void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
     // Get the node and delete it from the list. We need to search by name since we don't have the lis
     // Once it's found, check if it's direct or indirect
@@ -386,6 +474,13 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
     cwrites("Pointer in the inode has been deleted!\n");
 }
 
+/**
+ * @brief Move into another directory by making sure the pointer at index 0 is a direct pointer
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ * @return Inode* - The current working directory we are in
+ */
 Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     char str[20];
     sprint(str, "%08x, %c\n", inode, inode->is_direct);
@@ -408,6 +503,15 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     return fs->current_inode;
 }
 
+/**
+ * @brief Print out info about the current working directory and the file system. This will include
+ *        all pointers in the current inode that are not null, and will differentiate between the first
+ *        one being a file or another directory (only first one can be). For the file system, it will print
+ *        the number of inodes in use, and not in use. It will do the same for data blocks too.
+ * 
+ * @param fs - the file system structure
+ * @param inode - the current working directory we are in
+ */
 void print_directory (FileSystem_s *fs, Inode_s *inode) {
     char str[80];
 
