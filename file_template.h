@@ -205,6 +205,13 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
 Inode_s* move_in_directory (FileSystem_s *fs, Inode_s *inode);
 
 /**
+ * @brief This will move to the last directory. The only issue is that it will lost the previous pointer
+ * 
+ * @param fs - the file system structure
+ */
+void move_out_directory (FileSystem_s *fs);
+
+/**
  * @brief Print out info about the current working directory and the file system. This will include
  *        all pointers in the current inode that are not null, and will differentiate between the first
  *        one being a file or another directory (only first one can be). For the file system, it will print

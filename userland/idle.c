@@ -88,6 +88,16 @@ USERMAIN( idle ) {
     print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
 
+    /* Move back a directory */
+    move_out_directory(fs);
+    print_directory(fs, fs->current_inode);
+    DELAY(LONG * 20);
+
+    /* Delete the second directory that we made */
+    delete_pointer_in_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false);
+    print_directory(fs, fs->current_inode);
+    DELAY(LONG * 20);
+
     for(;;) {
         DELAY(LONG);
         write( CHAN_SIO, &ch, 1 );

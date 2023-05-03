@@ -511,6 +511,19 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
 }
 
 /**
+ * @brief This will move to the last directory. The only issue is that it will lost the previous pointer
+ * 
+ * @param fs - the file system structure
+ */
+void move_out_directory (FileSystem_s *fs) {
+    if (fs->previous_inode != NULL) {
+        Inode_s *temp = fs->previous_inode;
+        fs->current_inode = temp;
+        temp = NULL;
+    }
+}
+
+/**
  * @brief Print out info about the current working directory and the file system. This will include
  *        all pointers in the current inode that are not null, and will differentiate between the first
  *        one being a file or another directory (only first one can be). For the file system, it will print
@@ -553,7 +566,3 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     sprint(str, "Total free blocks: %d\n", fs->num_free_blocks);
     cwrites(str);
 }
-
-// Might not be able to implement this unless I do a doubly linked list, or a if I store the previous in the file 
-// system structure
-Inode_s *mode_out_directory (FileSystem_s *fs, Inode_s *inode);
