@@ -38,9 +38,10 @@
 
 /*Sizes for inodes*/
 #define TOTAL_NUM_OF_INODES 64
-#define SIZE_OF_INODES_DEC 64
-#define SIZE_OF_INODES_HEX 0x40
+#define SIZE_OF_INODES_DEC 80
+#define SIZE_OF_INODES_HEX 0x50
 #define POINTERS_PER_INODE 15
+#define SIZE_OF_DIRECTORY_NAME 16
 
 /*Sizes for file system structure*/
 #define SIZE_OF_FILE_SYSTEM_DEC 28 // In bytes
@@ -52,7 +53,8 @@ typedef struct Inode_s {
     uint8_t num_of_pointers;
     bool_t is_direct; // Only the first block can be an indirect pointer, this will be true if it's direct, false if indirect
     void *direct[15]; // 1 node that can be either direct, or indirect
-} Inode_s; // Exactly 64 bytes
+    char name[16]; // name of the directory (if is a directory)
+} Inode_s; // Exactly 80 bytes
 
 // Structure for a file
 typedef struct File_s {
@@ -118,9 +120,10 @@ FileSystem_s* file_system_init (void);
  * @param index - the index into the array of pointers in the inode
  * @param is_direct - if the node will be direct or indirect
  * @param new_inode - the node if it is indirect
+ * @param name - the name of the pointer, if it is direct (which it must be in this case to be made)
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
-Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
+Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[SIZE_OF_DIRECTORY_NAME]);
 
 /**
  * @brief Create a data block object and return it in the list object

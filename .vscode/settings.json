@@ -14,7 +14,8 @@
         "sstream": "cpp",
         "stdexcept": "cpp",
         "utility": "cpp",
-        "array": "c"
+        "array": "c",
+        "typeinfo": "c"
     },
     "cSpell.words": [
         "ACPI",

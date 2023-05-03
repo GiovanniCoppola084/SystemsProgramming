@@ -140,9 +140,10 @@ FileSystem_s* file_system_init (void) {
  * @param index - the index into the array of pointers in the inode
  * @param is_direct - if the node will be direct or indirect
  * @param new_inode - the node if it is indirect
+ * @param name - the name of the pointer, if it is direct (which it must be in this case to be made)
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
-Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
+Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[SIZE_OF_DIRECTORY_NAME]) {
     // assert(fs->free_nodes != NULL); // Assert that we still have free nodes. If we don't, then we panic
     // assert(strlen(name) <= 14);
     
@@ -196,7 +197,12 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         accessed_node->direct[i] = NULL;
     }
 
-    fs->current_inode = accessed_node;
+    // Copy the name into the name field of the directory
+    strcpy(accessed_node->name, name);
+
+    // fs->current_inode = accessed_node;
+    inode = accessed_node;
+
     fs->num_free_nodes = fs->num_free_nodes - 1;
 
     /* Print that the inode was created successfully */
@@ -462,7 +468,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
     }
     // assert(inode != NULL);
     if (inode == NULL) {
-        _kpanic("no free nodes");
+        _kpanic("Inode is null");
     }
     
     if (!is_direct) {
@@ -493,7 +499,8 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
 
     fs->previous_inode = inode;
     fs->current_inode = (Inode_s *)(inode->direct[0]);
-
+    
+    // Panic here. Something is wrong with the current inode
     if (fs->current_inode == NULL) {
         _kpanic("the current inode is null");
     }
@@ -523,21 +530,17 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
 
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
-            cwrites("First one\n");
-            sprint(str, "1. Directory\n");
+            sprint(str, "Directory: %s\n", inode->name);
             cwrites(str);
         } else if (i == 0 && inode->is_direct && inode->direct[0] != NULL) {
-            cwrites("Second one\n");
-            File_s *file = (File_s *)inode->direct[0];
+            File_s *file = (File_s *)(inode->direct[0]);
             sprint(str, "1. File: %s\n", file->name);
             cwrites(str);
-        }
-
-        if (i > 0 && inode->direct[i] != NULL) {
-            // File_s *file = (File_s *)(inode->direct[i]);
-            cwrites("Name printed here\n");
-            // sprint(str, "%d. File: %s\n", (i + 1), file->name);
-            // cwrites(str);
+        } else if (i > 0 && inode->direct[i] != NULL) {
+            File_s *file = (File_s *)(inode->direct[i]);
+            sprint(str, "%d. File: %s\n", (i + 1), file->name);
+        } else {
+            cwrites("NULL\n");
         }
     }
 

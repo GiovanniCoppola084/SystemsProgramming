@@ -34,7 +34,7 @@ USERMAIN( idle ) {
     FileSystem_s *fs = file_system_init();
     sprint(str, "%08x\n", fs);
     cwrites(str);
-    create_inode(fs, fs->current_inode, 0, false);
+    create_inode(fs, fs->current_inode, 0, false, "Direc 1");
 
     print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
@@ -60,23 +60,31 @@ USERMAIN( idle ) {
     inode_read(fs, fs->current_inode, index_into_inode);
     DELAY(LONG * 20);
 
+    // Delete the data pointer from the inode that we just cleared the data from
+    delete_inode_pointer(fs, fs->current_inode->direct[index_into_inode], index_into_inode);
+    print_directory(fs, fs->current_inode);
+    DELAY(LONG * 20);
+
     /* Create the next pointer to an inode in the working directory */
     index_into_inode = 0;
-    create_inode(fs, (Inode_s *)(fs->current_inode->direct[index_into_inode]), index_into_inode, false);
+    /// Something might be going wrong here in that the node is not being created properly
+    Inode_s *inode = (Inode_s *)(fs->current_inode->direct[index_into_inode]);
+    create_inode(fs, inode, index_into_inode, false, "Direc 2");
 
     /* Move directories to the new one that we made */
-    fs->current_inode = move_in_directory(fs, fs->current_inode);
+    move_in_directory(fs, fs->current_inode);
     print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
     
     /* Create one more inode */
     index_into_inode = 0;
-    create_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false);
+    create_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false, "Direc 3");
     print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
 
     /* Delete the inode pointer that we just created */
-    delete_pointer_in_inode(fs, fs->current_inode, 0, false);
+    index_into_inode = 0;
+    delete_pointer_in_inode(fs, fs->current_inode->direct[index_into_inode], index_into_inode, false);
     print_directory(fs, fs->current_inode);
     DELAY(LONG * 20);
 
