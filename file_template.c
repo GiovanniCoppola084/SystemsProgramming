@@ -169,23 +169,25 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         temp_node = temp_node->next;
     }
 
-    char test[80];
+    // Remove for final implementation
+    /*char test[80];
     sprint(test, "Address free list nodes: %08x\n", fs->free_nodes);
     cwrites(test);
 
     sprint(test, "Address used list nodes: %08x\n", fs->used_nodes);
     cwrites(test);
 
-    DELAY(LONG * 20);
+    DELAY(LONG * 20);*/
 
     list_s *node = (list_s *)(fs->used_nodes);
     if (node == NULL) {
         _kpanic("The new inode created is NULL\n");
     }
 
-    char str[80];
+    // Remove for final implementation
+    /*char str[80];
     sprint(str, "Address of new node: %08x\n", node);
-    cwrites(str);
+    cwrites(str);*/
 
     // current = current->next;
     Inode_s *accessed_node = (Inode_s *)(&node->data);
@@ -201,14 +203,14 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     strcpy(accessed_node->name, name);
 
     // fs->current_inode = accessed_node;
-    inode = accessed_node;
+    // inode = accessed_node;
 
     fs->num_free_nodes = fs->num_free_nodes - 1;
 
     /* Print that the inode was created successfully */
-    sprint(str, "Inode created: %08x\n", fs->current_inode);
+    char str[80];
+    sprint(str, "Inode created: %08x\n", accessed_node);
     cwrites(str);
-    DELAY(LONG * 20);
 
     return accessed_node;
 }
@@ -224,7 +226,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
  * @param index - the index to say where to add the node in
  * @return list_s* 
  */
-File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
+File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[16], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
     if (fs->free_blocks == NULL) {
         _kpanic("no free blocks");
     }
@@ -253,11 +255,11 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
         temp_node = temp_node->next;
     }
 
-    char test[80];
+    // Remove for final implementation
+    /*char test[80];
     sprint(test, "Address free list blocks: %08x\n", fs->free_blocks);
     cwrites(test);
-    DELAY(LONG * 20);
-
+    DELAY(LONG * 20);*/
     list_s *node = (list_s *)(fs->used_blocks);
     if (node == NULL) {
         _kpanic("The new block created is NULL\n");
@@ -266,7 +268,6 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     File_s *accessed_node = (File_s *)(&node->data);
     // accessed_node->name = name;
     strcpy(accessed_node->name, name);
-    accessed_node->file_index = index;
     // accessed_node->data_block = block;
     strcpy(accessed_node->data_block, block);
 
@@ -277,7 +278,7 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     inode->direct[index] = accessed_node;
 
     /* Print that the data block was created successfully */
-    char str[100];
+    char str[80];
     sprint(str, "Data block created: %08x\n", inode->direct[index]);
     cwrites(str);
     DELAY(LONG * 20);
@@ -373,17 +374,17 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
  * @param inode - the current working directory we are in
  * @param index - the index of the inode
  */
-void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
-    inode->direct[index] = NULL;
-        
+void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {        
     list_s *free_node = fs->free_nodes;
-    list_s *used_node = fs->used_blocks;
+    list_s *used_node = fs->used_nodes;
     list_s *node = NULL;
     bool_t found = false;
     
     while (used_node->next) {
-        // Is this the right way to type cast in this case?
-        if (((Inode_s *)(used_node->data)) == inode) {
+        Inode_s *new_node = (Inode_s *)(used_node->data);
+        char s2[16];
+        strcpy(s2, new_node->name);
+        if (strcmp(name, s2) == 0) {
             // free_node->next = used_node;
             found = true;
             break;
@@ -418,18 +419,27 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
  * @param index - the index of the direct pointer
  * @param is_direct - if the index is at 0, then check if it is direct or indirect
  */
-void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) {
-    inode->direct[index] = NULL;
-
+void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {
     list_s *free_block = fs->free_blocks;
     list_s *used_block = fs->used_blocks;
     list_s *node = NULL;
     bool_t found = false;
+
+    char str[80];
+    sprint(str, "Used blocks pointer: %08x\n", used_block);
+    cwrites(str);
+    DELAY(LONG * 20);
+
     while (used_block->next) {
-        if (((Inode_s *)(used_block->data)) == inode) {
+        Inode_s *new_node = (Inode_s *)(used_block->data);
+        char s2[16];
+        strcpy(s2, new_node->name);
+
+        if (strcmp(name, s2) == 0) {
             found = true;
             break;
         }
+
         node = used_block;
         used_block = used_block->next;
     }
@@ -458,7 +468,7 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index) 
  * @param inode - the current working directory we are in
  * @param inode_number - the index of the data block to delete
  */
-void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct) {
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[16]) {
     // Get the node and delete it from the list. We need to search by name since we don't have the lis
     // Once it's found, check if it's direct or indirect
 
@@ -472,9 +482,9 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
     }
     
     if (!is_direct) {
-        delete_inode_pointer(fs, inode, index);
+        delete_inode_pointer(fs, inode, index, name);
     } else {
-        delete_data_block_pointer(fs, inode, index);
+        delete_data_block_pointer(fs, inode, index, name);
     }
 
     cwrites("Pointer in the inode has been deleted!\n");
@@ -538,12 +548,14 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     if (inode->is_direct) {
         cwrites("Is direct!\n");
     } else {
-        cwrites("Is not direct!\n");
+        sprint(str, "Directory info for %s:\n", inode->name);
+        cwrites("Directory info for \n");
     }
 
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
-        if (i == 0 && !inode->is_direct && inode->direct[0] != NULL) {
-            sprint(str, "Directory: %s\n", inode->name);
+        if (i == 0 && !inode->is_direct && (Inode_s *)(inode->direct[0]) != NULL) {
+            Inode_s *next_inode = (Inode_s *)(inode->direct[0]);
+            sprint(str, "Directory: %s\n", next_inode->name);
             cwrites(str);
         } else if (i == 0 && inode->is_direct && inode->direct[0] != NULL) {
             File_s *file = (File_s *)(inode->direct[0]);
@@ -553,10 +565,18 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
             File_s *file = (File_s *)(inode->direct[i]);
             sprint(str, "%d. File: %s\n", (i + 1), file->name);
         } else {
-            cwrites("NULL\n");
+            sprint(str, "%d. NULL\n", (i + 1));
+            cwrites(str);
         }
-    }
 
+        // Faster delay than others, but still enough to be abel to see all files in directory
+        DELAY(LONG * 5);
+    }
+}
+
+void print_file_system_info (FileSystem_s *fs) {
+    char str[80];
+    cwrites("File System Information:\n");
     sprint(str, "Total inodes in use: %d\n", (TOTAL_NUM_OF_INODES - fs->num_free_nodes));
     cwrites(str);
     sprint(str, "Total free inodes: %d\n", fs->num_free_nodes);
@@ -565,4 +585,5 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     cwrites(str);
     sprint(str, "Total free blocks: %d\n", fs->num_free_blocks);
     cwrites(str);
+    DELAY(LONG * 20);
 }

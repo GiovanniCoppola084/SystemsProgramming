@@ -58,8 +58,7 @@ typedef struct Inode_s {
 
 // Structure for a file
 typedef struct File_s {
-    char name[14];
-    uint8_t file_index; // 2 bytes for the file index
+    char name[16];
     char data_block[SIZE_OF_DATA_BLOCK_DEC]; // pointer to 512 byte data block
 } File_s; // 528 bytes
 
@@ -158,33 +157,32 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char *block);
 
 /**
- * @brief Delete an inode pointer and return it to the free list of memory
+ * @brief 
  * 
  * @param fs - the file system structure
  * @param inode - the current working directory we are in
  * @param index - the index of the inode
  */
-void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index);
+void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]);
 
 /**
- * @brief Delete a data block pointer and return it to the free list of memory
+ * @brief 
  * 
  * @param fs - the file system structure
  * @param inode - the current working directory we are in
  * @param index - the index of the inode
  */
-void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index);
+void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]);
 
 /**
- * @brief When the user wants to delete an object in the current inode directory, it will be added to the free list. This will
- *        work for an indirect or direct pointer
+ * @brief 
  * 
  * @param fs - the file system structure
  * @param inode - the inode the user wants to delete (if indirect)
  * @param index - the index of the direct pointer
  * @param is_direct - if the index is at 0, then check if it is direct or indirect
  */
-void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct);
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[16]);
 
 /**
  * @brief Set the data block of an inode to be all spaces (empty characters) when the user wants
@@ -221,5 +219,7 @@ void move_out_directory (FileSystem_s *fs);
  * @param inode - the current working directory we are in
  */
 void print_directory (FileSystem_s *fs, Inode_s *inode);
+
+void print_file_system_info(FileSystem_s *fs);
 
 #endif
