@@ -37,7 +37,6 @@ USERMAIN( idle ) {
     DELAY(LONG * 20);
     print_file_system_info(fs);
     fs->current_inode = create_inode(fs, fs->current_inode, 0, false, "Direc 1");
-    // print_directory(fs, fs->current_inode);
     print_file_system_info(fs);
     DELAY(LONG * 20);
 
@@ -72,7 +71,6 @@ USERMAIN( idle ) {
 
     /* Create the next pointer to an inode in the working directory */
     index_into_inode = 0;
-    /// Something might be going wrong here in that the node is not being created properly
     inode = (Inode_s *)(fs->current_inode->direct[index_into_inode]);
     inode = create_inode(fs, inode, index_into_inode, false, "Direc 2");
 
@@ -106,6 +104,7 @@ USERMAIN( idle ) {
     DELAY(LONG * 20);
 
     print_file_system_info(fs);
+    DELAY(LONG * 20);
 
     for(;;) {
         DELAY(LONG);
