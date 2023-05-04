@@ -205,7 +205,7 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     if (index == 0) {
         if (!is_direct) {
             _kpanic("not direct");
-        
+        }
     }
 
     list_s *new_node;
@@ -336,22 +336,21 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
     list_s *used_node = fs->used_nodes;
     list_s *node = NULL;
     bool_t found = false;
-    
-    while (used_node->next) {
-        Inode_s *new_node = (Inode_s *)(used_node->data);
-        char s2[16];
-        strcpy(s2, new_node->name);
-        if (strcmp(name, s2) == 0) {
+
+    do {
+        Inode_s *new_node = (Inode_s *)(&used_node->data);
+
+        if (strcmp(name, new_node->name) == 0) {
             found = true;
             break;
         }
         node = used_node;
         used_node = used_node->next;
-    }
+    } while(used_node);
 
     if (found == false) {
         _kpanic("not found");
-    }=
+    }
 
     list_s *temp = node; // Set the temp variable
     temp->data = NULL; // Set the data in temp to NULL
@@ -379,27 +378,21 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
     list_s *node = NULL;
     bool_t found = false;
 
-    char str[80];
-    sprint(str, "Used blocks pointer: %08x\n", used_block);
-    cwrites(str);
-    DELAY(LONG * 20);
+    do {
+        File_s *new_node = (File_s *)(&used_block->data);
 
-    while (used_block->next) {
-        Inode_s *new_node = (Inode_s *)(used_block->data);
-        char s2[16];
-        strcpy(s2, new_node->name);
-
-        if (strcmp(name, s2) == 0) {
+        if (strcmp(name, new_node->name) == 0) {
             found = true;
             break;
         }
-
         node = used_block;
         used_block = used_block->next;
-    }
+    } while(used_block);
 
     if (found == false) {
-        _kpanic("not found");
+        _kpanic("Not found");
+    } else {
+        cwrites("Found\n");
     }
 
     list_s *temp = node; // Set the temp variable
@@ -431,8 +424,18 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         _kpanic("Inode is null");
     }
     
-    if (!is_direct) {
+    /*if (!is_direct) {
         delete_inode_pointer(fs, inode, index, name);
+    } else {
+        delete_data_block_pointer(fs, inode, index, name);
+    } */
+
+    if (index == 0) {
+        if (is_direct) {
+            delete_data_block_pointer(fs, inode, index, name);
+        } else {
+            delete_inode_pointer(fs, inode, index, name);
+        }
     } else {
         delete_data_block_pointer(fs, inode, index, name);
     }
@@ -498,6 +501,7 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
     if (inode->is_direct) {
         cwrites("Is direct!\n");
     } else {
+        // This is not printing out the inode name properly
         sprint(str, "Directory info for %s:\n", inode->name);
         cwrites("Directory info for \n");
     }
@@ -530,7 +534,6 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
 
         cwrites(str);
         // Shorter delay than others, but still enough to be abel to see all files in directory
-        DELAY(LONG * 5);
 
         /*if (i == 0 && !inode->is_direct && (Inode_s *)(inode->direct[0]) != NULL) {
             Inode_s *next_inode = (Inode_s *)(inode->direct[0]);
@@ -548,8 +551,16 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
             cwrites(str);
         }*/
     }
+    for (int i = 0; i < 3; i++) {
+        DELAY(LONG * 20);
+    }
 }
 
+/**
+ * @brief Print out the information of the file system such as the number of nodes in used, or freed.
+ * 
+ * @param fs - the file system structure
+ */
 void print_file_system_info (FileSystem_s *fs) {
     char str[80];
     cwrites("File System Information:\n");

@@ -67,6 +67,10 @@ typedef struct list_s {
     // This will point to either a data section or another node
     // This will depend on what the mode byte is
     void *data;
+    /*union data{
+        File_s *file;
+        Inode_s *inode;
+    };*/
     struct list_s *next;
 } list_s; 
 
@@ -212,14 +216,18 @@ void move_out_directory (FileSystem_s *fs);
 /**
  * @brief Print out info about the current working directory and the file system. This will include
  *        all pointers in the current inode that are not null, and will differentiate between the first
- *        one being a file or another directory (only first one can be). For the file system, it will print
- *        the number of inodes in use, and not in use. It will do the same for data blocks too.
+ *        one being a file or another directory (only first one can be).
  * 
  * @param fs - the file system structure
  * @param inode - the current working directory we are in
  */
 void print_directory (FileSystem_s *fs, Inode_s *inode);
 
+/**
+ * @brief Print out the information of the file system such as the number of nodes in used, or freed.
+ * 
+ * @param fs - the file system structure
+ */
 void print_file_system_info(FileSystem_s *fs);
 
 #endif

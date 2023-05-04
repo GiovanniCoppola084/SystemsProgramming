@@ -56,6 +56,7 @@ USERMAIN( idle ) {
     inode_read(fs, fs->current_inode, index_into_inode);
     DELAY(LONG * 20);
 
+    index_into_inode = 1;
     /* Delete the data that was in the data block */
     inode_delete_data(fs, fs->current_inode, index_into_inode);
     /* Reprint the data that should be all spaces */
@@ -65,7 +66,7 @@ USERMAIN( idle ) {
     // Delete the data pointer from the inode that we just cleared the data from
     Inode_s *inode;
     File_s *file = (File_s *)(fs->current_inode->direct[index_into_inode]);
-    delete_inode_pointer(fs, fs->current_inode, index_into_inode, file->name);
+    delete_pointer_in_inode(fs, fs->current_inode, index_into_inode, fs->current_inode->is_direct, file->name);
     print_file_system_info(fs);
     DELAY(LONG * 20);
 
