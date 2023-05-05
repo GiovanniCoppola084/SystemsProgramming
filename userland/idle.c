@@ -70,6 +70,8 @@ USERMAIN( idle ) {
     print_file_system_info(fs);
     DELAY(LONG * 20);
 
+    // We know make it past this point
+
     /* Create the next pointer to an inode in the working directory */
     index_into_inode = 0;
     inode = (Inode_s *)(fs->current_inode->direct[index_into_inode]);
