@@ -73,7 +73,8 @@ USERMAIN( idle ) {
     /* Create the next pointer to an inode in the working directory */
     index_into_inode = 0;
     inode = (Inode_s *)(fs->current_inode->direct[index_into_inode]);
-    inode = create_inode(fs, inode, index_into_inode, false, "Direc 2");
+    // inode = create_inode(fs, inode, index_into_inode, false, "Direc 2");
+    fs->current_inode->direct[index_into_inode] = create_inode(fs, inode, index_into_inode, false, "Direc 2");
 
     /* Move directories to the new one that we made */
     move_in_directory(fs, fs->current_inode);
