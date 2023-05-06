@@ -47,18 +47,20 @@
 #define SIZE_OF_FILE_SYSTEM_DEC 28 // In bytes
 #define SIZE_OF_FILE_SYSTEM_HEX 0x1C
 
+#define MAX_NAME_LENGTH 16
+
 // Strucure for an inode
 typedef struct Inode_s {
     uint8_t size;
     uint8_t num_of_pointers;
     bool_t is_direct; // Only the first block can be an indirect pointer, this will be true if it's direct, false if indirect
     void *direct[15]; // 1 node that can be either direct, or indirect
-    char name[16]; // name of the directory (if is a directory)
+    char name[MAX_NAME_LENGTH]; // name of the directory (if is a directory)
 } Inode_s; // Exactly 80 bytes
 
 // Structure for a file
 typedef struct File_s {
-    char name[16];
+    char name[MAX_NAME_LENGTH];
     char data_block[SIZE_OF_DATA_BLOCK_DEC]; // pointer to 512 byte data block
 } File_s; // 528 bytes
 

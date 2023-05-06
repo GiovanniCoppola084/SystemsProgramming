@@ -133,6 +133,8 @@ int32_t userY( uint32_t, void * ); int32_t userZ( uint32_t, void * );
 #include "userland/shell.c"
 #endif
 
+#include "userland/file_shell.c"
+
 /*
 ** System processes - these should always be included here
 */

@@ -151,7 +151,7 @@
 ** of ?.
 */
 
-#define SPAWN_A
+/*#define SPAWN_A
 #define SPAWN_B
 #define SPAWN_C
 #define SPAWN_D
@@ -171,7 +171,7 @@
 #define SPAWN_S
 #define SPAWN_T
 #define SPAWN_U
-#define SPAWN_V
+#define SPAWN_V*/
 
 
 //

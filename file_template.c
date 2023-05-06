@@ -61,6 +61,8 @@ uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
     // Set the used nodes to null since we wont be using any at init
     fs->used_nodes = NULL;
 
+    cwrites("File system initialized!\n");
+
     return current_address;
 }
 
@@ -161,18 +163,19 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
         // Insert current into head of linked list
 
         // Check to make sure this does not lose the head of the list (this is possible)
-        list_s *temp_node;
-        temp_node = fs->free_nodes;
-        new_node = fs->free_nodes->next;
+        // list_s *temp_node;
+        // temp_node = fs->free_nodes;
+        new_node = fs->free_nodes;
         new_node->next = fs->used_nodes;
         fs->used_nodes = new_node;
-        temp_node = temp_node->next;
+        // temp_node = temp_node->next;
+        fs->free_nodes = fs->free_nodes->next;
     }
 
     list_s *node = (list_s *)(fs->used_nodes);
     // Panic if the node is NULL. Means the allocation went wrong
     if (node == NULL) {
-        _kpanic("The new inode created is NULL\n");
+        _kpanic("The new inode created is NULL");
     }
 
     // Set the data in the node now
@@ -191,10 +194,13 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     fs->num_free_nodes = fs->num_free_nodes - 1;
     inode->num_of_pointers = inode->num_of_pointers + 1;
 
+    inode->direct[index] = accessed_node;
+
     /* Print that the inode was created successfully */
     char str[80];
     sprint(str, "Inode created: %08x\n", accessed_node);
     cwrites(str);
+    DELAY(LONG * 20);
 
     return accessed_node;
 }
@@ -212,6 +218,10 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
  */
 File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[16], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
     // Panic if we have no blocks. Means we have no memory left
+    if (index < 0) {
+        _kpanic("Negative number");
+    }
+
     if (fs->free_blocks == NULL) {
         _kpanic("no free blocks");
     }
@@ -219,6 +229,10 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     // Panic if we are trying to put a file where another directory will go
     if (index == 0 && !is_direct) {
         _kpanic("not direct");
+    }
+
+    if (index == POINTERS_PER_INODE) {
+        _kpanic("Too many pointers in inode");
     }
 
     list_s *new_node;
@@ -229,12 +243,13 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
         new_node->next = NULL;
         fs->used_blocks = new_node;
     } else {
-        list_s *temp_node;
-        temp_node = fs->free_blocks;
-        new_node = fs->free_blocks->next;
+        // list_s *temp_node;
+        // temp_node = fs->free_blocks;
+        new_node = fs->free_blocks;
         new_node->next = fs->used_blocks;
         fs->used_blocks = new_node;
-        temp_node = temp_node->next;
+        // temp_node = temp_node->next;
+        fs->free_blocks = fs->free_blocks->next;
     }
 
     list_s *node = (list_s *)(fs->used_blocks);
@@ -253,6 +268,10 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     inode->num_of_pointers = inode->num_of_pointers + 1;
 
     inode->direct[index] = accessed_node;
+
+    // Set the current node to the accessed node since the move in directory is not working
+    // fs->previous_inode = inode;
+    // fs->current_inode = accessed_node;
 
     /* Print that the data block was created successfully */
     char str[80];
@@ -298,7 +317,7 @@ void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char 
         _kpanic("not direct");
     }
 
-    File_s *file = (File_s *) inode->direct[inode_number];
+    File_s *file = (File_s *)inode->direct[inode_number];
 
     strcpy(file->data_block, block);
     char str[SIZE_OF_DATA_BLOCK_DEC + 15];
@@ -323,12 +342,6 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
 
     char empty_block[SIZE_OF_DATA_BLOCK_DEC];
 
-    // Set every index in the data block to a space. So it's 'deleted'
-    /*for (int i = 0; i < SIZE_OF_DATA_BLOCK_DEC - 1; i++) {
-        empty_block[i] = ' ';
-    }
-    empty_block[SIZE_OF_DATA_BLOCK_DEC - 1] = '\0';*/
-
     // Set the first character to a null character, so it knows to stop printing
     // Not sure if this will work as intended, but we'll see
     empty_block[0] = '\0';
@@ -350,6 +363,9 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
     list_s *used_node = fs->used_nodes;
     list_s *node = NULL;
     bool_t found = false;
+
+    // Set the node to NULL
+    inode->direct[index] = NULL;
 
     // Loop through every element, including the first and check to see if it is the inode
     do {
@@ -394,6 +410,9 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
     list_s *used_block = fs->used_blocks;
     list_s *node = NULL;
     bool_t found = false;
+
+    // Set the node to NULL
+    inode->direct[index] = NULL;
 
     // Loop through all pointers to find the block
     do {
@@ -480,6 +499,8 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
         _kpanic("the current inode is null");
     }
 
+    cwrites("Moved into directory!\n");
+
     // Return the first pointer if it's not direct, since that will move us to a new directory
     return fs->current_inode;
 }
@@ -513,21 +534,21 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
 
     // This is not printing out the inode name properly
     sprint(str, "Directory info for %s:\n", inode->name);
-    cwrites("Directory info for \n");
+    cwrites(str);
 
     // Loop through each one of the possible pointers in the current inode
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
         if (i == 0 && inode->is_direct) {
             node = (Inode_s *)(inode->direct[i]);
             if (node == NULL)  {
-                sprint(str, "Directory: NULL\n");
+                sprint(str, "Directory: %d. NULL\n", (i+1));
             } else {
                 sprint(str, "Directory: %d. %s\n", (i+1), node->name);
             }
         } else {
             file = (File_s *)(inode->direct[i]);
             if (file == NULL) {
-                sprint(str, "File: NULL\n");
+                sprint(str, "File: %d. NULL\n", (i+1));
             } else {
                 sprint(str, "File: %d. %s\n", (i+1), file->name);
             }

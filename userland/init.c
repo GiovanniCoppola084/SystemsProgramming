@@ -167,6 +167,7 @@ Proc spawnTable[] = {
 #ifdef SPAWN_V
     PROCENT( main6, User, "userV\rV\rk\r6" ),
 #endif
+PROCENT(file_shell, User, ""),
     
     // a dummy entry to use as a sentinel
     { 0, 0, 0, 0 }
