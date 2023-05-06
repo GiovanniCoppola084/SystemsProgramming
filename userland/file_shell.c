@@ -2,6 +2,14 @@
 
 FileSystem_s *fs;
 
+/**
+ * @brief This function will read in the line entered by the user one character at a time.
+ *        It will also print the prompt before entering the user information
+ * 
+ * @param buffer - the buffer that the data will be put in
+ * @param length - the length of the input data
+ * @param prompt - the prompt to print before getting the user information
+ */
 void read_line (char *buffer, uint32_t length, char *prompt) {
     char *end = buffer + length - 1;
 
@@ -28,20 +36,34 @@ void read_line (char *buffer, uint32_t length, char *prompt) {
     swrites("\r\n");
 }
 
+/**
+ * @brief This function will break the system if the file system has not been initialized before
+ *        doing an operation on it
+ * 
+ */
 void is_fs_initialized(void) {
     if (fs == NULL) {
         _kpanic("File system not yet initalized");
     }
 }
 
+/**
+ * @brief This function will break the system if the first inode has not been initialized before
+ *        doing an operation on it
+ * 
+ */
 void is_inode(void) {
     if (fs->current_inode == NULL) {
         _kpanic("No inode exists");
     }
 }
 
+/**
+ * @brief This function will print all of the options of the menu to the screen
+ * 
+ */
 void print_menu(void) {
-    swrites("COMMANDS:\r\n");
+    swrites("Commands:\r\n");
     swrites("i - initialize file system\r\n");
     swrites("c - create inode\r\n");
     swrites("d - create data block\r\n");
@@ -64,16 +86,19 @@ USERMAIN (file_shell) {
         char buffer;
 
         while(1) {
-            // Read one character from serial
+            // Read one character from serial. This will be the command character
             read(CHAN_SIO, &buffer, 1);
             swritech(buffer);
             swrites("\r\n");
 
+            // Simple variables that are used in many of the cases
             char name[MAX_NAME_LENGTH];
             char data_block[SIZE_OF_DATA_BLOCK_DEC];
             char index_str[3];
             int index;
 
+            // Do an operation based on which one the user picked
+            // Commands are described more closely in the print menu function
             switch(buffer) {
                 case 'i':
                     swrites("Initializing file system!\r\n");
@@ -82,7 +107,7 @@ USERMAIN (file_shell) {
                 case 'c':
                     is_fs_initialized();
                     read_line(name, MAX_LINE_LENGTH, "Enter a name for the inode: ");
-                    create_inode(fs, fs->current_inode, 0, false, name);
+                    create_inode(fs, fs->current_inode, name);
                     break;
                 case 'd':
                     is_fs_initialized();
@@ -147,6 +172,9 @@ USERMAIN (file_shell) {
                     exit(1);
                     break;
                 case 'h':
+                    print_menu();
+                    break;
+                default:
                     print_menu();
                     break;
             }

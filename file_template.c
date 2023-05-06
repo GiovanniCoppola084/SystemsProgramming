@@ -36,7 +36,7 @@ uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address) {
 
         // Make sure we actually have a usable memory address
         if (new_node == NULL) {
-            _kpanic("new node is null");
+            _kpanic("Something went wrong with creating a new inode");
         }
 
         // Set data and next to NULL since this on the end of the list
@@ -82,7 +82,7 @@ uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address) {
 
         // Want to make sure we have a usable address
         if (new_node == NULL) {
-            _kpanic("new node is null");
+            _kpanic("Something went wrong with creating a new data block");
         }
 
         // Set data and next to NULL since we are on the end of the list
@@ -145,33 +145,34 @@ FileSystem_s* file_system_init (void) {
  * @param name - the name of the pointer, if it is direct (which it must be in this case to be made)
  * @return Inode_s* - the node that was created for the user and added into the file system
  */
-Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[SIZE_OF_DIRECTORY_NAME]) {
-    // Panic if we have no nodes since that means there is no allocation space left
+Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, char name[SIZE_OF_DIRECTORY_NAME]) {
     if (fs->free_nodes == NULL) {
-        _kpanic("no free nodes");
+        _kpanic("No free nodes");
     }
 
-    list_s *new_node;
-
     if (fs->used_nodes == NULL) {
-        // Move the head of the free nodes list to the used node list, and make the next pointer NULL
+        /*// Move the head of the free nodes list to the used node list, and make the next pointer NULL
         list_s *temp_node = fs->free_nodes;
-        new_node = fs->free_nodes; 
-        // fs->free_nodes = fs->free_nodes->next;
+        new_node = fs->free_nodes;
         new_node->next = NULL; 
-        fs->used_nodes = new_node; 
-        // fs->free_nodes = fs->free_nodes->next;
-        temp_node = temp_node->next;
+        fs->used_nodes = new_node;
+        temp_node = temp_node->next;*/
+        list_s *node = fs->free_nodes;
+        fs->free_nodes = fs->free_nodes->next;
+        node->next = NULL;
+        fs->used_nodes = node;
     } else {
-        // Insert current into head of linked list
-
+        /*// Insert current into head of linked list
         // Check to make sure this does not lose the head of the list (this is possible)
         list_s *temp_node = fs->free_nodes;
         new_node = fs->free_nodes;
         new_node->next = fs->used_nodes;
         fs->used_nodes = new_node;
-        temp_node = temp_node->next;
-        // fs->free_nodes = fs->free_nodes->next;
+        temp_node = temp_node->next;*/
+        list_s *node = fs->free_nodes;
+        fs->free_nodes = fs->free_nodes->next;
+        node->next = fs->used_nodes;
+        fs->used_nodes = node;
     }
 
     list_s *node = (list_s *)(fs->used_nodes);
@@ -196,12 +197,14 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     fs->num_free_nodes = fs->num_free_nodes - 1;
     inode->num_of_pointers = inode->num_of_pointers + 1;
 
-    if (fs->current_inode == NULL) {
+    // If the [current] inode is NULL, then assign it to the current node
+    // Otherwise, set it to the first node in the direct pointer array
+    if (inode == NULL) {
         fs->current_inode = accessed_node;
     } else {
-        fs->current_inode->direct[index] = accessed_node;
+        // This will always overwrite the first node if the user created it
+        fs->current_inode->direct[0] = accessed_node;
     }
-    // inode->direct[index] = accessed_node;
 
     /* Print that the inode was created successfully */
     char str[80];
@@ -223,41 +226,38 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
  * @return list_s* 
  */
 File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[16], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
-    // Panic if we have no blocks. Means we have no memory left
-    if (index < 0) {
-        _kpanic("Negative number");
-    }
-
     if (fs->free_blocks == NULL) {
-        _kpanic("no free blocks");
+        _kpanic("No free blocks");
     }
 
-    // Panic if we are trying to put a file where another directory will go
+    if (index < 0 || index == POINTERS_PER_INODE) {
+        _kpanic("Non-existing pointer accessed");
+    }
+
     if (index == 0 && !is_direct) {
-        _kpanic("not direct");
+        _kpanic("Not a data block");
     }
-
-    if (index == POINTERS_PER_INODE) {
-        _kpanic("Too many pointers in inode");
-    }
-
-    list_s *new_node;
 
     if (fs->used_blocks == NULL) {
-        list_s *temp_node = fs->free_blocks;
+        /*list_s *temp_node = fs->free_blocks;
         new_node = fs->free_blocks;
-        // fs->free_blocks = fs->free_blocks->next;
         new_node->next = NULL;
         fs->used_blocks = new_node;
-        // fs->free_blocks = fs->free_blocks->next;
-        temp_node = temp_node->next;
+        temp_node = temp_node->next;*/
+        list_s *node = fs->free_blocks;
+        fs->free_blocks = fs->free_blocks->next;
+        node->next = NULL;
+        fs->used_blocks = node;
     } else {
-        list_s *temp_node = fs->free_blocks;
+        /*list_s *temp_node = fs->free_blocks;
         new_node = fs->free_blocks;
         new_node->next = fs->used_blocks;
         fs->used_blocks = new_node;
-        temp_node = temp_node->next;
-        // fs->free_blocks = fs->free_blocks->next;
+        temp_node = temp_node->next;*/
+        list_s *node = fs->free_blocks;
+        fs->free_blocks = fs->free_blocks->next;
+        node->next = fs->used_blocks;
+        fs->used_blocks = node;
     }
 
     list_s *node = (list_s *)(fs->used_blocks);
@@ -299,7 +299,7 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
 void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     // Panic if we are reading from a directory
     if (inode_number == 0 && !inode->direct) {
-        _kpanic("not direct");
+        _kpanic("Not a data block");
     }
 
     File_s *file = (File_s *) inode->direct[inode_number];
@@ -321,7 +321,7 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
 void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char block[SIZE_OF_DATA_BLOCK_DEC]) {
     // Panic if we are reading from a directory
     if (inode_number == 0 && !inode->direct) {
-        _kpanic("not direct");
+        _kpanic("Not a data block");
     }
 
     File_s *file = (File_s *)inode->direct[inode_number];
@@ -342,7 +342,7 @@ void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char 
 void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number) {
     // Panic if we are reading from a directory
     if (inode_number == 0 && !inode->direct) {
-        _kpanic("not direct");
+        _kpanic("Not a data block");
     }
 
     File_s *file = (File_s *) inode->direct[inode_number];
@@ -388,7 +388,7 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
 
     // Panic if we did not find the node (lost it somewhere or just a bad node)
     if (found == false) {
-        _kpanic("not found");
+        _kpanic("Inode not found");
     }
 
     // Free the item by putting it on the free list and clearing data
@@ -435,7 +435,7 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
 
     // Panic if we did not find it
     if (found == false) {
-        _kpanic("Not found");
+        _kpanic("Data block not found");
     } else {
         cwrites("Found\n");
     }
@@ -463,7 +463,7 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
     // Once it's found, check if it's direct or indirect
 
     if (fs->free_blocks == NULL) {
-        _kpanic("no free nodes");
+        _kpanic("No free nodes");
     }
     if (inode == NULL) {
         _kpanic("Inode is null");
@@ -495,7 +495,7 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     cwrites(str);
 
     if (inode->is_direct) {
-        _kpanic("node is not a directory");
+        _kpanic("Pointer is a data block, not an inode");
     }
 
     fs->previous_inode = inode;
@@ -503,7 +503,7 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     
     // Panic here. Something is wrong with the current inode
     if (fs->current_inode == NULL) {
-        _kpanic("the current inode is null");
+        _kpanic("The current inode is null");
     }
 
     cwrites("Moved into directory!\n");
