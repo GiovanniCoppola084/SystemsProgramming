@@ -155,21 +155,23 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
 
     if (fs->used_nodes == NULL) {
         // Move the head of the free nodes list to the used node list, and make the next pointer NULL
+        list_s *temp_node = fs->free_nodes;
         new_node = fs->free_nodes; 
-        fs->free_nodes = fs->free_nodes->next;
+        // fs->free_nodes = fs->free_nodes->next;
         new_node->next = NULL; 
         fs->used_nodes = new_node; 
+        // fs->free_nodes = fs->free_nodes->next;
+        temp_node = temp_node->next;
     } else {
         // Insert current into head of linked list
 
         // Check to make sure this does not lose the head of the list (this is possible)
-        // list_s *temp_node;
-        // temp_node = fs->free_nodes;
+        list_s *temp_node = fs->free_nodes;
         new_node = fs->free_nodes;
         new_node->next = fs->used_nodes;
         fs->used_nodes = new_node;
-        // temp_node = temp_node->next;
-        fs->free_nodes = fs->free_nodes->next;
+        temp_node = temp_node->next;
+        // fs->free_nodes = fs->free_nodes->next;
     }
 
     list_s *node = (list_s *)(fs->used_nodes);
@@ -194,7 +196,12 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     fs->num_free_nodes = fs->num_free_nodes - 1;
     inode->num_of_pointers = inode->num_of_pointers + 1;
 
-    inode->direct[index] = accessed_node;
+    if (fs->current_inode == NULL) {
+        fs->current_inode = accessed_node;
+    } else {
+        fs->current_inode->direct[index] = accessed_node;
+    }
+    // inode->direct[index] = accessed_node;
 
     /* Print that the inode was created successfully */
     char str[80];
@@ -238,18 +245,20 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     list_s *new_node;
 
     if (fs->used_blocks == NULL) {
+        list_s *temp_node = fs->free_blocks;
         new_node = fs->free_blocks;
-        fs->free_blocks = fs->free_blocks->next;
+        // fs->free_blocks = fs->free_blocks->next;
         new_node->next = NULL;
         fs->used_blocks = new_node;
+        // fs->free_blocks = fs->free_blocks->next;
+        temp_node = temp_node->next;
     } else {
-        // list_s *temp_node;
-        // temp_node = fs->free_blocks;
+        list_s *temp_node = fs->free_blocks;
         new_node = fs->free_blocks;
         new_node->next = fs->used_blocks;
         fs->used_blocks = new_node;
-        // temp_node = temp_node->next;
-        fs->free_blocks = fs->free_blocks->next;
+        temp_node = temp_node->next;
+        // fs->free_blocks = fs->free_blocks->next;
     }
 
     list_s *node = (list_s *)(fs->used_blocks);
@@ -538,7 +547,7 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
 
     // Loop through each one of the possible pointers in the current inode
     for (int i = 0; i < POINTERS_PER_INODE; i++) {
-        if (i == 0 && inode->is_direct) {
+        if (i == 0 && !inode->is_direct) {
             node = (Inode_s *)(inode->direct[i]);
             if (node == NULL)  {
                 sprint(str, "Directory: %d. NULL\n", (i+1));
