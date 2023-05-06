@@ -1,3 +1,17 @@
+// 
+// File: file_shell.c 
+// Description: Shell commands to operate the file system
+//
+// @author Gino Coppola
+//
+// Description: Function definitions so the user can operate the file 
+//              system as they want. There will be defined operations they can use.
+//              They will choose from one of those. They include initialization, creation
+//              and deletion of inodes and data blocks, read and writing from data blocks,
+//              moving into directories, and printing the information of the system. 
+// 
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
+
 #include "file_shell.h"
 
 FileSystem_s *fs;

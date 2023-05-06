@@ -1,3 +1,13 @@
+// 
+// File: file_shell.h 
+// Description: Shell commands to operate the file system
+//
+// @author Gino Coppola
+//
+// Description: Function prototypes for the functions used by the shell
+// 
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
+
 #include "./file_template.h"
 
 #define MAX_LINE_LENGTH 80
@@ -31,62 +41,3 @@ void is_inode(void);
  * 
  */
 void print_menu(void);
-
-/*
-list_s *node = fs->free_nodes;
-fs->free_nodes = fs->free_nodes->next;
-node->next = NULL;
-fs->used_nodes = node;
-
-list_s *node = fs->free_nodes;
-fs->free_nodes = fs->free_nodes->next;
-node->next = fs->used_nodes;
-fs->used_nodes = node;
-
-void moveNodeToHead(struct Node** srcHeadRef, struct Node** destHeadRef, int position) {
-    if (*srcHeadRef == NULL) {
-        printf("Source linked list is empty.\n");
-        return;
-    }
-
-    if (position <= 0) {
-        printf("Invalid position.\n");
-        return;
-    }
-
-    struct Node* current = *srcHeadRef;
-    struct Node* prev = NULL;
-    int count = 0;
-
-    // Traverse to the node at the given position
-    while (current != NULL && count != position) {
-        prev = current;
-        current = current->next;
-        count++;
-    }
-
-    if (current == NULL) {
-        printf("Invalid position.\n");
-        return;
-    }
-
-    // Adjust the pointers to remove the node from the source list
-    if (prev != NULL)
-        prev->next = current->next;
-    else
-        *srcHeadRef = current->next;
-
-    // Move the node to the head of the destination list
-    current->next = *destHeadRef;
-    *destHeadRef = current;
-}
-
-if (previous != NULL) {
-    previous->next = current->next;
-} else {
-    fs->used_nodes = current->next;
-}
-
-current->next = fs->free_nodes;
-fs->free_nodes = current;
-*/

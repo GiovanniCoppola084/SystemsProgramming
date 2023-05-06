@@ -1,5 +1,5 @@
 // 
-// File: file_template.h 
+// File: file_template.c
 // Description: My take on a Unix V7 file structure using RAM disk in our operating system
 //
 // @author Gino Coppola
