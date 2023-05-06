@@ -366,7 +366,6 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
  * @param index - the index of the inode
  */
 void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {        
-    list_s *free_node = fs->free_nodes;
     list_s *current = fs->used_nodes;
     list_s *previous = NULL;
     bool_t found = false;
@@ -424,7 +423,6 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
  * @param is_direct - if the index is at 0, then check if it is direct or indirect
  */
 void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {
-    list_s *free_block = fs->free_blocks;
     list_s *current = fs->used_blocks;
     list_s *previous = NULL;
     bool_t found = false;
