@@ -207,7 +207,6 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is
     char str[80];
     sprint(str, "Inode created: %08x\n", accessed_node);
     cwrites(str);
-    DELAY(LONG * 20);
 
     return accessed_node;
 }
@@ -286,7 +285,6 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     char str[80];
     sprint(str, "Data block created: %08x\n", inode->direct[index]);
     cwrites(str);
-    DELAY(LONG * 20);
 
     return accessed_node;
 }
@@ -568,8 +566,6 @@ void print_directory (FileSystem_s *fs, Inode_s *inode) {
 
     sprint(str, "Total number of pointers active: %d\n", inode->num_of_pointers);
     cwrites(str);
-    DELAY(LONG * 20);
-    DELAY(LONG * 20);
 }
 
 /**
@@ -588,5 +584,4 @@ void print_file_system_info (FileSystem_s *fs) {
     cwrites(str);
     sprint(str, "Total free blocks: %d\n", fs->num_free_blocks);
     cwrites(str);
-    DELAY(LONG * 20);
 }
