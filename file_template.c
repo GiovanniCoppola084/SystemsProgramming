@@ -367,8 +367,8 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
  */
 void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {        
     list_s *free_node = fs->free_nodes;
-    list_s *used_node = fs->used_nodes;
-    list_s *node = NULL;
+    list_s *current = fs->used_nodes;
+    list_s *previous = NULL;
     bool_t found = false;
 
     // Set the node to NULL
@@ -376,27 +376,38 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
 
     // Loop through every element, including the first and check to see if it is the inode
     do {
-        Inode_s *new_node = (Inode_s *)(&used_node->data);
+        Inode_s *new_node = (Inode_s *)(&current->data);
 
         if (strcmp(name, new_node->name) == 0) {
             found = true;
             break;
         }
-        node = used_node;
-        used_node = used_node->next;
-    } while(used_node);
+
+        // Previous node
+        previous = current;
+        // This is the current node
+        current = current->next;
+    } while(current);
 
     // Panic if we did not find the node (lost it somewhere or just a bad node)
-    if (found == false) {
+    if (found == false || current == NULL) {
         _kpanic("Inode not found");
     }
 
     // Free the item by putting it on the free list and clearing data
-    list_s *temp = node; 
+    /*list_s *temp = node; 
     temp->data = NULL; 
     temp->next = free_node;
     fs->free_nodes = temp;
-    node->next = used_node->next;
+    node->next = used_node->next;*/
+    if (previous != NULL) {
+        previous->next = current->next;
+    } else {
+        fs->used_nodes = current->next;
+    }
+
+    current->next = fs->free_nodes;
+    fs->free_nodes = current;
 
     // Update the number of pointers
     fs->num_free_nodes = fs->num_free_nodes + 1;
@@ -414,8 +425,8 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
  */
 void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {
     list_s *free_block = fs->free_blocks;
-    list_s *used_block = fs->used_blocks;
-    list_s *node = NULL;
+    list_s *current = fs->used_blocks;
+    list_s *previous = NULL;
     bool_t found = false;
 
     // Set the node to NULL
@@ -423,15 +434,15 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
 
     // Loop through all pointers to find the block
     do {
-        File_s *new_node = (File_s *)(&used_block->data);
+        File_s *new_node = (File_s *)(&current->data);
 
         if (strcmp(name, new_node->name) == 0) {
             found = true;
             break;
         }
-        node = used_block;
-        used_block = used_block->next;
-    } while(used_block);
+        previous = current;
+        current = current->next;
+    } while(current);
 
     // Panic if we did not find it
     if (found == false) {
@@ -440,11 +451,19 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
         cwrites("Found\n");
     }
 
-    list_s *temp = node; // Set the temp variable
+    /*list_s *temp = node; // Set the temp variable
     temp->data = NULL; // Set the data in temp to NULL
     temp->next = free_block; // Set temps next variable to the head of the free list (now the new head)
     fs->free_blocks = temp; // Set the free nodes to the new list
-    node->next = used_block->next; // Remove the node from the used blocks list
+    node->next = used_block->next; // Remove the node from the used blocks list*/
+    if (previous != NULL) {
+        previous->next = current->next;
+    } else {
+        fs->used_blocks = current->next;
+    }
+
+    current->next = fs->free_blocks;
+    fs->free_blocks = current;
 
     // Update the number of pointers
     fs->num_free_blocks = fs->num_free_blocks + 1;

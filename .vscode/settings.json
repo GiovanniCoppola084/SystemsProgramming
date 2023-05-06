@@ -15,7 +15,8 @@
         "stdexcept": "cpp",
         "utility": "cpp",
         "array": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "*.tcc": "c"
     },
     "cSpell.words": [
         "ACPI",
