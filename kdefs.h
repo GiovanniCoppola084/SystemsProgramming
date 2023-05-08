@@ -113,6 +113,11 @@ typedef uint32_t    key_t;
 #define SANITY  9999
 #endif
 
+#ifndef DO_AHCI
+// toggle ahci drive id process
+#define DO_AHCI 1
+#endif
+
 // Always-active assertions
 #define assert(x)   if( !(x) ) { PANIC(0,x); }
 

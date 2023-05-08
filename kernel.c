@@ -14,6 +14,7 @@
 #include "queues.h"
 #include "processes.h"
 
+#include "ahci.h"
 #include "bootstrap.h"
 #include "cio.h"
 #include "clock.h"
@@ -400,7 +401,11 @@ void _kinit( void ) {
     **
     **  Enabling any I/O devices (e.g., SIO xmit/rcv)
     */
+#if DO_AHCI
+    _ahci_init();
 
+    __delay(1000);
+#endif
     /*
     ** Create the initial user process
     ** 

@@ -249,5 +249,6 @@
 #define INT_VEC_FLOPPY_DISK             0x26
 #define INT_VEC_MYSTERY                 0x27
 #define INT_VEC_MOUSE                   0x2c
+#define INT_VEC_AHCI                    0x2B
 
 #endif
