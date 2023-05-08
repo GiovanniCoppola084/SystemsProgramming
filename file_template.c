@@ -370,35 +370,25 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
     list_s *previous = NULL;
     bool_t found = false;
 
-    // Set the node to NULL
-    inode->direct[index] = NULL;
+    char str[80];
 
-    // Loop through every element, including the first and check to see if it is the inode
-    do {
+    while (current != NULL) {
         Inode_s *new_node = (Inode_s *)(&current->data);
-
+        sprint(str, "Current name of the inode; %s\n", new_node->name);
+        cwrites(str);
         if (strcmp(name, new_node->name) == 0) {
             found = true;
             break;
         }
-
-        // Previous node
         previous = current;
-        // This is the current node
         current = current->next;
-    } while(current);
+    }
 
     // Panic if we did not find the node (lost it somewhere or just a bad node)
-    if (found == false || current == NULL) {
+    if (found == false) {
         _kpanic("Inode not found");
     }
 
-    // Free the item by putting it on the free list and clearing data
-    /*list_s *temp = node; 
-    temp->data = NULL; 
-    temp->next = free_node;
-    fs->free_nodes = temp;
-    node->next = used_node->next;*/
     if (previous != NULL) {
         previous->next = current->next;
     } else {
@@ -407,6 +397,7 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
 
     current->next = fs->free_nodes;
     fs->free_nodes = current;
+    current = NULL;
 
     // Update the number of pointers
     fs->num_free_nodes = fs->num_free_nodes + 1;
@@ -427,20 +418,20 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
     list_s *previous = NULL;
     bool_t found = false;
 
-    // Set the node to NULL
-    inode->direct[index] = NULL;
+    char str[80];
 
-    // Loop through all pointers to find the block
-    do {
+    while (current != NULL) {
         File_s *new_node = (File_s *)(&current->data);
-
+        sprint(str, "Current name of the data block: %s\n", new_node->name);
+        cwrites(str);
         if (strcmp(name, new_node->name) == 0) {
             found = true;
             break;
         }
+
         previous = current;
         current = current->next;
-    } while(current);
+    }
 
     // Panic if we did not find it
     if (found == false) {
@@ -449,11 +440,6 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
         cwrites("Found\n");
     }
 
-    /*list_s *temp = node; // Set the temp variable
-    temp->data = NULL; // Set the data in temp to NULL
-    temp->next = free_block; // Set temps next variable to the head of the free list (now the new head)
-    fs->free_blocks = temp; // Set the free nodes to the new list
-    node->next = used_block->next; // Remove the node from the used blocks list*/
     if (previous != NULL) {
         previous->next = current->next;
     } else {
@@ -462,6 +448,7 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
 
     current->next = fs->free_blocks;
     fs->free_blocks = current;
+    current = NULL;
 
     // Update the number of pointers
     fs->num_free_blocks = fs->num_free_blocks + 1;
@@ -496,6 +483,9 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
         delete_data_block_pointer(fs, inode, index, name);
     }
 
+    // Is this correct?
+    inode->direct[index] = NULL;
+
     cwrites("Pointer in the inode has been deleted!\n");
 }
 
@@ -507,10 +497,6 @@ void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bo
  * @return Inode* - The current working directory we are in
  */
 Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
-    char str[20];
-    sprint(str, "%08x, %c\n", inode, inode->is_direct);
-    cwrites(str);
-
     if (inode->is_direct) {
         _kpanic("Pointer is a data block, not an inode");
     }
@@ -520,7 +506,7 @@ Inode_s *move_in_directory (FileSystem_s *fs, Inode_s *inode) {
     
     // Panic here. Something is wrong with the current inode
     if (fs->current_inode == NULL) {
-        _kpanic("The current inode is null");
+        _kpanic("No inode to move into");
     }
 
     cwrites("Moved into directory!\n");

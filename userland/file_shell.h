@@ -23,6 +23,16 @@
 void read_line (char *buffer, uint32_t length, char *prompt);
 
 /**
+ * @brief This function will allow the user to enter an index that will be used to either
+ *        access an data block or an inode. The max index will be the same for both cases 
+ *        since we are accessing pointers in an inode
+ * 
+ * @param index_str - the index string that was read in from the command lin
+ * @return int - the integer, that must be valid, after converting to an int from the string
+ */
+int enter_index(char index_str[3]);
+
+/**
  * @brief This function will break the system if the file system has not been initialized before
  *        doing an operation on it
  * 

@@ -51,6 +51,23 @@ void read_line (char *buffer, uint32_t length, char *prompt) {
 }
 
 /**
+ * @brief This function will allow the user to enter an index that will be used to either
+ *        access an data block or an inode. The max index will be the same for both cases 
+ *        since we are accessing pointers in an inode
+ * 
+ * @param index_str - the index string that was read in from the command lin
+ * @return int - the integer, that must be valid, after converting to an int from the string
+ */
+int enter_index(char index_str[3]) {
+    read_line(index_str, 3, "Enter index of the object: ");
+    int index = str2int(index_str, 10);
+    if (index < 1 || index > POINTERS_PER_INODE) {
+        _kpanic("Not a proper index entered");
+    }
+    return index;
+}
+
+/**
  * @brief This function will break the system if the file system has not been initialized before
  *        doing an operation on it
  * 
@@ -100,6 +117,9 @@ USERMAIN (file_shell) {
         char buffer;
 
         while(1) {
+            // Print character to signify it is a charater operation input
+            swrites("> ");
+
             // Read one character from serial. This will be the command character
             read(CHAN_SIO, &buffer, 1);
             swritech(buffer);
@@ -128,22 +148,19 @@ USERMAIN (file_shell) {
                     is_inode();
                     read_line(name, MAX_NAME_LENGTH, "Enter a name for the data block: ");
                     read_line(data_block, SIZE_OF_DATA_BLOCK_DEC, "Enter data for the data block: ");
-                    read_line(index_str, 3, "Enter index of the data block: ");
-                    index = str2int(index_str, 10);
+                    index = enter_index(index_str);
                     create_data_block(fs, fs->current_inode, true, name, data_block, (index-1));
                     break;
                 case 'r':
                     is_fs_initialized();
                     is_inode();
-                    read_line(index_str, 3, "Enter the number of the data block to read: ");
-                    index = str2int(index_str, 10);
+                    index = enter_index(index_str);
                     inode_read(fs, fs->current_inode, (index-1));
                     break;
                 case 'w':
                     is_fs_initialized();
                     is_inode();
-                    read_line(index_str, 3, "Enter the index of the data block to write to: ");
-                    index = str2int(index_str, 10);
+                    index = enter_index(index_str);
                     read_line(data_block, SIZE_OF_DATA_BLOCK_DEC, "Enter the new data: ");
                     inode_write(fs, fs->current_inode, (index-1), data_block);
                     break;
@@ -153,25 +170,22 @@ USERMAIN (file_shell) {
                 case 'o':
                     is_fs_initialized();
                     is_inode();
-                    read_line(index_str, 3, "Enter the index of the data block to overwrite: ");
-                    index = str2int(index_str, 10);
+                    index = enter_index(index_str);
                     inode_delete_data(fs, fs->current_inode, (index-1));
                     break;
                 case 'p':
                     is_fs_initialized();
                     is_inode();
-                    read_line(index_str, 3, "Enter the index of the inode to delete: ");
-                    index = str2int(index_str, 10);
+                    index = enter_index(index_str);
                     read_line(name, MAX_NAME_LENGTH, "Enter the name of the inode: ");
-                    delete_inode_pointer(fs, fs->current_inode, (index-1), name);
+                    delete_pointer_in_inode(fs, fs->current_inode, false, (index-1), name);
                     break;
                 case 'b':
                     is_fs_initialized();
                     is_inode();
-                    read_line(index_str, 3, "Enter the index of the data block to delete: ");
-                    index = str2int(index_str, 10);
+                    index = enter_index(index_str);
                     read_line(name, MAX_NAME_LENGTH, "Enter the name of the data block: ");
-                    delete_inode_pointer(fs, fs->current_inode, (index-1), name);
+                    delete_pointer_in_inode(fs, fs->current_inode, true, (index-1), name);
                     break;
                 case 'y':
                     is_fs_initialized();

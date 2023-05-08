@@ -3,7 +3,6 @@
 
 #include "users.h"
 #include "ulib.h"
-// #include "file_template.h"
 
 /**
 ** Idle process:  write, getpid, gettime, exit
@@ -14,10 +13,6 @@
 */
 
 USERMAIN( idle ) {
-    // char ch = '.';
-    // char str[80];
-    // uint8_t index_into_inode = 0;
-
     // ignore the command-line arguments
     (void) arglen;
     (void) args;
