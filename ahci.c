@@ -210,7 +210,7 @@ void port_rebase(HBA_PORT *port, int portno) {
  * @param  *port: pointer to an HBA_PORT in HBA memory space
  * @retval 
  */
-static int check_type(HBA_PORT *port) {
+int check_type(HBA_PORT *port) {
 	uint32_t ssts = port->ssts;
  
 	uint8_t ipm = (ssts >> 8) & 0x0F;
@@ -281,7 +281,7 @@ void probe_port(HBA_MEM *abar) {
  * @param  port: port to copy from
  * @retval value from port
  */
-static inline uint32_t inl(uint16_t port) {
+uint32_t inl(uint16_t port) {
     uint32_t ret;
     __asm__ volatile ( "inl %w1, %0" : "=a"(ret) : "Nd"(port) );
 
@@ -294,7 +294,7 @@ static inline uint32_t inl(uint16_t port) {
  * @param  val: value to put in port
  * @retval None
  */
-static inline void outl(uint16_t port, uint32_t val) {
+void outl(uint16_t port, uint32_t val) {
 
     __asm__ volatile ( "out %0, %1" : : "a"(val), "Nd"(port) );
 }
