@@ -1,8 +1,13 @@
 #include "common.h"
 #include "cio.h"
+#include "kmem.h"
+#include "lib.h"
+#include "support.h"
+#include "x86arch.h"
 
-typedef enum
-{
+// HBA and FIS structs from https://wiki.osdev.org/AHCI
+
+typedef enum {
 	FIS_TYPE_REG_H2D	= 0x27,	// Register FIS - host to device
 	FIS_TYPE_REG_D2H	= 0x34,	// Register FIS - device to host
 	FIS_TYPE_DMA_ACT	= 0x39,	// DMA activate FIS - device to host
@@ -13,8 +18,7 @@ typedef enum
 	FIS_TYPE_DEV_BITS	= 0xA1,	// Set device bits FIS - device to host
 } FIS_TYPE;
 
-typedef struct tagFIS_REG_H2D
-{
+typedef struct tagFIS_REG_H2D {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_REG_H2D
  
@@ -38,8 +42,8 @@ typedef struct tagFIS_REG_H2D
 	uint8_t  featureh;	// Feature register, 15:8
  
 	// DWORD 3
-	uint8_t  countl;		// Count register, 7:0
-	uint8_t  counth;		// Count register, 15:8
+	uint8_t  countl;	// Count register, 7:0
+	uint8_t  counth;	// Count register, 15:8
 	uint8_t  icc;		// Isochronous command completion
 	uint8_t  control;	// Control register
  
@@ -47,8 +51,7 @@ typedef struct tagFIS_REG_H2D
 	uint8_t  rsv1[4];	// Reserved
 } FIS_REG_H2D;
 
-typedef struct tagFIS_REG_D2H
-{
+typedef struct tagFIS_REG_D2H {
 	// DWORD 0
 	uint8_t  fis_type;    // FIS_TYPE_REG_D2H
  
@@ -81,13 +84,12 @@ typedef struct tagFIS_REG_D2H
 	uint8_t  rsv4[4];     // Reserved
 } FIS_REG_D2H;
 
-typedef struct tagFIS_DATA
-{
+typedef struct tagFIS_DATA {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_DATA
  
 	uint8_t  pmport:4;	// Port multiplier
-	uint8_t  rsv0:4;		// Reserved
+	uint8_t  rsv0:4;	// Reserved
  
 	uint8_t  rsv1[2];	// Reserved
  
@@ -95,25 +97,24 @@ typedef struct tagFIS_DATA
 	uint32_t data[1];	// Payload
 } FIS_DATA;
 
-typedef struct tagFIS_PIO_SETUP
-{
+typedef struct tagFIS_PIO_SETUP {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_PIO_SETUP
  
 	uint8_t  pmport:4;	// Port multiplier
-	uint8_t  rsv0:1;		// Reserved
+	uint8_t  rsv0:1;	// Reserved
 	uint8_t  d:1;		// Data transfer direction, 1 - device to host
 	uint8_t  i:1;		// Interrupt bit
 	uint8_t  rsv1:1;
  
-	uint8_t  status;		// Status register
+	uint8_t  status;	// Status register
 	uint8_t  error;		// Error register
  
 	// DWORD 1
 	uint8_t  lba0;		// LBA low register, 7:0
 	uint8_t  lba1;		// LBA mid register, 15:8
 	uint8_t  lba2;		// LBA high register, 23:16
-	uint8_t  device;		// Device register
+	uint8_t  device;	// Device register
  
 	// DWORD 2
 	uint8_t  lba3;		// LBA register, 31:24
@@ -122,8 +123,8 @@ typedef struct tagFIS_PIO_SETUP
 	uint8_t  rsv2;		// Reserved
  
 	// DWORD 3
-	uint8_t  countl;		// Count register, 7:0
-	uint8_t  counth;		// Count register, 15:8
+	uint8_t  countl;	// Count register, 7:0
+	uint8_t  counth;	// Count register, 15:8
 	uint8_t  rsv3;		// Reserved
 	uint8_t  e_status;	// New value of status register
  
@@ -132,40 +133,38 @@ typedef struct tagFIS_PIO_SETUP
 	uint8_t  rsv4[2];	// Reserved
 } FIS_PIO_SETUP;
 
-typedef struct tagFIS_DMA_SETUP
-{
+typedef struct tagFIS_DMA_SETUP {
 	// DWORD 0
-	uint8_t  fis_type;	// FIS_TYPE_DMA_SETUP
+	uint8_t  fis_type;		// FIS_TYPE_DMA_SETUP
  
-	uint8_t  pmport:4;	// Port multiplier
+	uint8_t  pmport:4;		// Port multiplier
 	uint8_t  rsv0:1;		// Reserved
-	uint8_t  d:1;		// Data transfer direction, 1 - device to host
-	uint8_t  i:1;		// Interrupt bit
-	uint8_t  a:1;            // Auto-activate. Specifies if DMA Activate FIS is needed
+	uint8_t  d:1;			// Data transfer direction, 1 - device to host
+	uint8_t  i:1;			// Interrupt bit
+	uint8_t  a:1;       	// Auto-activate. Specifies if DMA Activate FIS is needed
  
-        uint8_t  rsved[2];       // Reserved
+	uint8_t  rsved[2];  	// Reserved
  
 	//DWORD 1&2
  
-        uint64_t DMAbufferID;    // DMA Buffer Identifier. Used to Identify DMA buffer in host memory.
-                                 // SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
- 
-        //DWORD 3
-        uint32_t rsvd;           //More reserved
- 
-        //DWORD 4
-        uint32_t DMAbufOffset;   //Byte offset into buffer. First 2 bits must be 0
- 
-        //DWORD 5
-        uint32_t TransferCount;  //Number of bytes to transfer. Bit 0 must be 0
- 
-        //DWORD 6
-        uint32_t resvd;          //Reserved
+	uint64_t DMAbufferID;   // DMA Buffer Identifier. Used to Identify DMA buffer in host memory.
+							// SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
+
+	//DWORD 3
+	uint32_t rsvd;           //More reserved
+
+	//DWORD 4
+	uint32_t DMAbufOffset;   //Byte offset into buffer. First 2 bits must be 0
+
+	//DWORD 5
+	uint32_t TransferCount;  //Number of bytes to transfer. Bit 0 must be 0
+
+	//DWORD 6
+	uint32_t resvd;          //Reserved
  
 } FIS_DMA_SETUP;
  
-typedef volatile struct tagHBA_PORT
-{
+typedef volatile struct tagHBA_PORT {
 	uint32_t clb;		// 0x00, command list base address, 1K-byte aligned
 	uint32_t clbu;		// 0x04, command list base address upper 32 bits
 	uint32_t fb;		// 0x08, FIS base address, 256-byte aligned
@@ -187,8 +186,7 @@ typedef volatile struct tagHBA_PORT
 	uint32_t vendor[4];	// 0x70 ~ 0x7F, vendor specific
 } HBA_PORT;
 
-typedef volatile struct tagHBA_MEM
-{
+typedef volatile struct tagHBA_MEM {
 	// 0x00 - 0x2B, Generic Host Control
 	uint32_t cap;		// 0x00, Host capability
 	uint32_t ghc;		// 0x04, Global host control
@@ -197,8 +195,8 @@ typedef volatile struct tagHBA_MEM
 	uint32_t vs;		// 0x10, Version
 	uint32_t ccc_ctl;	// 0x14, Command completion coalescing control
 	uint32_t ccc_pts;	// 0x18, Command completion coalescing ports
-	uint32_t em_loc;		// 0x1C, Enclosure management location
-	uint32_t em_ctl;		// 0x20, Enclosure management control
+	uint32_t em_loc;	// 0x1C, Enclosure management location
+	uint32_t em_ctl;	// 0x20, Enclosure management control
 	uint32_t cap2;		// 0x24, Host capabilities extended
 	uint32_t bohc;		// 0x28, BIOS/OS handoff control and status
  
@@ -225,8 +223,7 @@ typedef struct tagFIS_SET_DEVICE_BITS {
     uint8_t error;
 } FIS_DEV_BITS;
 
-typedef volatile struct tagHBA_FIS
-{
+typedef volatile struct tagHBA_FIS {
 	// 0x00
 	FIS_DMA_SETUP	dsfis;		// DMA Setup FIS
 	uint8_t         pad0[4];
@@ -236,7 +233,7 @@ typedef volatile struct tagHBA_FIS
 	uint8_t         pad1[12];
  
 	// 0x40
-	FIS_REG_D2H	rfis;		// Register – Device to Host FIS
+	FIS_REG_D2H	rfis;			// Register – Device to Host FIS
 	uint8_t         pad2[4];
  
 	// 0x58
@@ -249,8 +246,7 @@ typedef volatile struct tagHBA_FIS
 	uint8_t   	rsv[0x100-0xA0];
 } HBA_FIS;
 
-typedef struct tagHBA_CMD_HEADER
-{
+typedef struct tagHBA_CMD_HEADER {
 	// DW0
 	uint8_t  cfl:5;		// Command FIS length in DWORDS, 2 ~ 16
 	uint8_t  a:1;		// ATAPI
@@ -260,7 +256,7 @@ typedef struct tagHBA_CMD_HEADER
 	uint8_t  r:1;		// Reset
 	uint8_t  b:1;		// BIST
 	uint8_t  c:1;		// Clear busy upon R_OK
-	uint8_t  rsv0:1;		// Reserved
+	uint8_t  rsv0:1;	// Reserved
 	uint8_t  pmp:4;		// Port multiplier port
  
 	uint16_t prdtl;		// Physical region descriptor table length in entries
@@ -277,20 +273,18 @@ typedef struct tagHBA_CMD_HEADER
 	uint32_t rsv1[4];	// Reserved
 } HBA_CMD_HEADER;
 
-typedef struct tagHBA_PRDT_ENTRY
-{
+typedef struct tagHBA_PRDT_ENTRY {
 	uint32_t dba;		// Data base address
 	uint32_t dbau;		// Data base address upper 32 bits
 	uint32_t rsv0;		// Reserved
  
 	// DW3
-	uint32_t dbc:22;		// Byte count, 4M max
-	uint32_t rsv1:9;		// Reserved
+	uint32_t dbc:22;	// Byte count, 4M max
+	uint32_t rsv1:9;	// Reserved
 	uint32_t i:1;		// Interrupt on completion
 } HBA_PRDT_ENTRY;
 
-typedef struct tagHBA_CMD_TBL
-{
+typedef struct tagHBA_CMD_TBL {
 	// 0x00
 	uint8_t  cfis[64];	// Command FIS
  
@@ -304,20 +298,102 @@ typedef struct tagHBA_CMD_TBL
 	HBA_PRDT_ENTRY	prdt_entry[1];	// Physical region descriptor table entries, 0 ~ 65535
 } HBA_CMD_TBL;
 
+
+/**
+ * @brief  Find a free command list slot
+ * @param  *port: pointer to an HBA_PORT in HBA memory space
+ * @param  num_of_slots: number of command slots
+ * @retval free command slot of port
+ */
+int find_cmdslot(HBA_PORT *port, int num_of_slots);
+
+/**
+ * @brief  Print first two characters of model number of a SATA Drive
+ * 		   by issuing ATA_CMD_IDENTIFY
+ * @param  *abar: pointer to HBA memory space
+ * @param  portno: port SATA drive is on
+ * @retval None
+ */
+void check_WD(HBA_MEM *abar, int portno);
+
+/**
+ * @brief  Enable command processing on a HBA port 
+ * @param  *port: pointer to an HBA_PORT in HBA memory space
+ * @retval None
+ */
+void start_cmd(HBA_PORT *port);
+
+/**
+ * @brief  Disable command processing on a HBA port
+ * @param  *port: pointer to an HBA_PORT in HBA memory space
+ * @retval None
+ */
+void stop_cmd(HBA_PORT *port);
+
+/**
+ * @brief  Allocate memory for FIS structs for the port
+ * @param  *port: pointer to an HBA_PORT in HBA memory space
+ * @param  portno: port number of controller
+ * @retval None
+ */
+void port_rebase(HBA_PORT *port, int portno);
+
+/**
+ * @brief  Check type of drive on port
+ * @param  *port: pointer to an HBA_PORT in HBA memory space
+ * @retval 
+ */
+static int check_type(HBA_PORT *port);
+
+/**
+ * @brief  Iterate through each port on AHCI controller, initializing
+ * 		   its memory and determining if it's a SATA drive 
+ * @param  *abar: pointer to HBA memory
+ * @retval None
+ */
 void probe_port(HBA_MEM *abar);
 
-extern HBA_MEM *abar;
-extern uint64_t *pages_for_ahci_start;
-extern uint64_t *pages_for_ahci_end;
-extern uint64_t *pages_for_ahci_start_virtual;
-extern uint64_t *pages_for_ahci_end_virtual;
+/**
+ * @brief  copies 32 bit value from I/O port with inline assembly
+ * @param  port: port to copy from
+ * @retval value from port
+ */
+static inline uint32_t inl(uint16_t port);
 
-extern void mem_map_ahci(uint64_t abar_tmp);
-int read_ahci(HBA_PORT *port, uint32_t startl, uint32_t starth, uint32_t count, uint64_t buf);
-int write_ahci(HBA_PORT *port, uint32_t startl, uint32_t starth, uint32_t count, uint64_t buf);
-char fs_buf[1024];
-uint64_t checkAllBuses(void) ;
-uint64_t find_ahci(void);
-void _ahci_init(void);
+/**
+ * @brief  copies 32b bit value to I/O port with inline assembly
+ * @param  port: port to put value in
+ * @param  val: value to put in port
+ * @retval None
+ */
+static inline void outl(uint16_t port, uint32_t val);
+
+/**
+ * @brief  Read 32 bit value from PCI Configuration space
+ * @param  bus: PCI bus number
+ * @param  slot: PCI slot number
+ * @param  func: PCI device function number
+ * @param  offset: Register offset
+ * @retval contents of PCI Configuration register
+ */
+uint32_t read_pci_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
+
+/**
+ * @brief  Enumerate PCI bus to find AHCI Controller
+ * @retval ABAR - Pointer to AHCI memory space
+ */
+uint64_t find_ahci();
+
+/**
+ * @brief  Interrupt routine for AHCI vector. Prints when AHCI interrput occurs
+ * @param  vector: Interrupt vector
+ * @param  code: Interrupt code
+ * @retval None
+ */
 void _ahci_isr(int vector, int code);
-void check_WD(HBA_MEM *abar, int portno);
+
+/**
+ * @brief  Driving method called from kernel to initialize AHCI functionality
+ * @retval None
+ */
+void _ahci_init();
