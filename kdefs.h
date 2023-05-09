@@ -118,6 +118,11 @@ typedef uint32_t    key_t;
 #define DO_AHCI 1
 #endif
 
+#ifndef DO_PIO
+//toggle pio
+#define DO_PIO 1
+#endif
+
 // Always-active assertions
 #define assert(x)   if( !(x) ) { PANIC(0,x); }
 

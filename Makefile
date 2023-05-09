@@ -15,16 +15,16 @@
 #
 
 OS_C_SRC = clock.c kernel.c kmem.c processes.c queues.c sched.c \
-	    sio.c stacks.c syscalls.c libc.c vector.c file_template.c ahci.c
+	    sio.c stacks.c syscalls.c libc.c vector.c file_template.c ahci.c pio.o
 OS_C_OBJ = clock.o kernel.o kmem.o processes.o queues.o sched.o \
-	    sio.o stacks.o syscalls.o vector.o file_template.o ahci.o
+	    sio.o stacks.o syscalls.o vector.o file_template.o ahci.o pio.o
 
 OS_S_SRC =
 OS_S_OBJ =
 
 OS_HDRS  = clock.h common.h compat.h kdefs.h kernel.h kmem.h offsets.h \
 	    processes.h queues.h sched.h sio.h stacks.h syscalls.h \
-	    udefs.h ulib.h vector.h file_template.h ahci.h
+	    udefs.h ulib.h vector.h file_template.h ahci.h pio.h
 
 OS_LIBS =
 

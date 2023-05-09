@@ -19,6 +19,7 @@
 #include "cio.h"
 #include "clock.h"
 #include "kmem.h"
+#include "pio.h"
 #include "sched.h"
 #include "sio.h"
 #include "support.h"
@@ -405,6 +406,12 @@ void _kinit( void ) {
     _ahci_init();
 
     __delay(1000);
+#endif
+
+#if DO_PIO
+    pio_init();
+
+    __delay(500);
 #endif
     /*
     ** Create the initial user process
