@@ -113,7 +113,7 @@ uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address);
  * 
  * @return FileSystem_s* - the baseline file system that will be used for the rest of the run time
  */
-FileSystem_s* file_system_init (void);
+FileSystem_s *file_system_init (void);
 
 /**
  * @brief When the user wants to create an inode, it will take a block off the free list and allocate it in the used list.
@@ -139,7 +139,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, char name[SIZE_OF_DIRECT
  * @param index - the index to say where to add the node in
  * @return list_s* 
  */
-File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[14], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index);
+File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[MAX_NAME_LENGTH], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index);
 
 /**
  * @brief Read the data block from the current working directory. Check to make sure if the index is at 0, then it's direct
@@ -158,7 +158,7 @@ void inode_read (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number);
  * @param inode_number - the index of the data block to write into
  * @param block - the data block being sent into the inode
  */
-void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char *block);
+void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char block[SIZE_OF_DATA_BLOCK_DEC]);
 
 /**
  * @brief 
@@ -167,7 +167,7 @@ void inode_write (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char 
  * @param inode - the current working directory we are in
  * @param index - the index of the inode
  */
-void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]);
+void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[MAX_NAME_LENGTH]);
 
 /**
  * @brief 
@@ -176,7 +176,7 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
  * @param inode - the current working directory we are in
  * @param index - the index of the inode
  */
-void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]);
+void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[MAX_NAME_LENGTH]);
 
 /**
  * @brief 
@@ -186,7 +186,7 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
  * @param index - the index of the direct pointer
  * @param is_direct - if the index is at 0, then check if it is direct or indirect
  */
-void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[16]);
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[MAX_NAME_LENGTH]);
 
 /**
  * @brief Set the data block of an inode to be all spaces (empty characters) when the user wants

@@ -151,24 +151,11 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, char name[SIZE_OF_DIRECT
     }
 
     if (fs->used_nodes == NULL) {
-        /*// Move the head of the free nodes list to the used node list, and make the next pointer NULL
-        list_s *temp_node = fs->free_nodes;
-        new_node = fs->free_nodes;
-        new_node->next = NULL; 
-        fs->used_nodes = new_node;
-        temp_node = temp_node->next;*/
         list_s *node = fs->free_nodes;
         fs->free_nodes = fs->free_nodes->next;
         node->next = NULL;
         fs->used_nodes = node;
     } else {
-        /*// Insert current into head of linked list
-        // Check to make sure this does not lose the head of the list (this is possible)
-        list_s *temp_node = fs->free_nodes;
-        new_node = fs->free_nodes;
-        new_node->next = fs->used_nodes;
-        fs->used_nodes = new_node;
-        temp_node = temp_node->next;*/
         list_s *node = fs->free_nodes;
         fs->free_nodes = fs->free_nodes->next;
         node->next = fs->used_nodes;
@@ -225,7 +212,7 @@ Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, char name[SIZE_OF_DIRECT
  * @param index - the index to say where to add the node in
  * @return list_s* 
  */
-File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[16], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
+File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[MAX_NAME_LENGTH], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index) {
     if (fs->free_blocks == NULL) {
         _kpanic("No free blocks");
     }
@@ -239,21 +226,11 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     }
 
     if (fs->used_blocks == NULL) {
-        /*list_s *temp_node = fs->free_blocks;
-        new_node = fs->free_blocks;
-        new_node->next = NULL;
-        fs->used_blocks = new_node;
-        temp_node = temp_node->next;*/
         list_s *node = fs->free_blocks;
         fs->free_blocks = fs->free_blocks->next;
         node->next = NULL;
         fs->used_blocks = node;
     } else {
-        /*list_s *temp_node = fs->free_blocks;
-        new_node = fs->free_blocks;
-        new_node->next = fs->used_blocks;
-        fs->used_blocks = new_node;
-        temp_node = temp_node->next;*/
         list_s *node = fs->free_blocks;
         fs->free_blocks = fs->free_blocks->next;
         node->next = fs->used_blocks;
@@ -276,10 +253,6 @@ File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, ch
     inode->num_of_pointers = inode->num_of_pointers + 1;
 
     inode->direct[index] = accessed_node;
-
-    // Set the current node to the accessed node since the move in directory is not working
-    // fs->previous_inode = inode;
-    // fs->current_inode = accessed_node;
 
     /* Print that the data block was created successfully */
     char str[80];
@@ -365,7 +338,7 @@ void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
  * @param inode - the current working directory we are in
  * @param index - the index of the inode
  */
-void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {        
+void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[MAX_NAME_LENGTH]) {        
     list_s *current = fs->used_nodes;
     list_s *previous = NULL;
     bool_t found = false;
@@ -413,7 +386,7 @@ void delete_inode_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char 
  * @param index - the index of the direct pointer
  * @param is_direct - if the index is at 0, then check if it is direct or indirect
  */
-void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[16]) {
+void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[MAX_NAME_LENGTH]) {
     list_s *current = fs->used_blocks;
     list_s *previous = NULL;
     bool_t found = false;
@@ -462,7 +435,7 @@ void delete_data_block_pointer(FileSystem_s *fs, Inode_s *inode, uint8_t index, 
  * @param inode - the current working directory we are in
  * @param inode_number - the index of the data block to delete
  */
-void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[16]) {
+void delete_pointer_in_inode(FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[MAX_NAME_LENGTH]) {
     // Get the node and delete it from the list. We need to search by name since we don't have the lis
     // Once it's found, check if it's direct or indirect
 
