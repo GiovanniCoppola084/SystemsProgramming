@@ -343,7 +343,7 @@ void port_rebase(HBA_PORT *port, int portno);
  * @param  *port: pointer to an HBA_PORT in HBA memory space
  * @retval 
  */
-static int check_type(HBA_PORT *port);
+int check_type(HBA_PORT *port);
 
 /**
  * @brief  Iterate through each port on AHCI controller, initializing
@@ -358,7 +358,7 @@ void probe_port(HBA_MEM *abar);
  * @param  port: port to copy from
  * @retval value from port
  */
-static inline uint32_t inl(uint16_t port);
+uint32_t inl(uint16_t port);
 
 /**
  * @brief  copies 32b bit value to I/O port with inline assembly
@@ -366,7 +366,7 @@ static inline uint32_t inl(uint16_t port);
  * @param  val: value to put in port
  * @retval None
  */
-static inline void outl(uint16_t port, uint32_t val);
+void outl(uint16_t port, uint32_t val);
 
 /**
  * @brief  Read 32 bit value from PCI Configuration space
@@ -382,7 +382,7 @@ uint32_t read_pci_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset
  * @brief  Enumerate PCI bus to find AHCI Controller
  * @retval ABAR - Pointer to AHCI memory space
  */
-uint64_t find_ahci();
+uint64_t find_ahci(void);
 
 /**
  * @brief  Interrupt routine for AHCI vector. Prints when AHCI interrput occurs
@@ -396,4 +396,4 @@ void _ahci_isr(int vector, int code);
  * @brief  Driving method called from kernel to initialize AHCI functionality
  * @retval None
  */
-void _ahci_init();
+void _ahci_init(void);
