@@ -1,8 +1,13 @@
 #include "common.h"
 #include "cio.h"
+#include "kmem.h"
+#include "lib.h"
+#include "support.h"
+#include "x86arch.h"
 
-typedef enum
-{
+// HBA and FIS structs from https://wiki.osdev.org/AHCI
+
+typedef enum {
 	FIS_TYPE_REG_H2D	= 0x27,	// Register FIS - host to device
 	FIS_TYPE_REG_D2H	= 0x34,	// Register FIS - device to host
 	FIS_TYPE_DMA_ACT	= 0x39,	// DMA activate FIS - device to host
@@ -13,8 +18,7 @@ typedef enum
 	FIS_TYPE_DEV_BITS	= 0xA1,	// Set device bits FIS - device to host
 } FIS_TYPE;
 
-typedef struct tagFIS_REG_H2D
-{
+typedef struct tagFIS_REG_H2D {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_REG_H2D
  
@@ -47,8 +51,7 @@ typedef struct tagFIS_REG_H2D
 	uint8_t  rsv1[4];	// Reserved
 } FIS_REG_H2D;
 
-typedef struct tagFIS_REG_D2H
-{
+typedef struct tagFIS_REG_D2H {
 	// DWORD 0
 	uint8_t  fis_type;    // FIS_TYPE_REG_D2H
  
@@ -81,8 +84,7 @@ typedef struct tagFIS_REG_D2H
 	uint8_t  rsv4[4];     // Reserved
 } FIS_REG_D2H;
 
-typedef struct tagFIS_DATA
-{
+typedef struct tagFIS_DATA {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_DATA
  
@@ -95,8 +97,7 @@ typedef struct tagFIS_DATA
 	uint32_t data[1];	// Payload
 } FIS_DATA;
 
-typedef struct tagFIS_PIO_SETUP
-{
+typedef struct tagFIS_PIO_SETUP {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_PIO_SETUP
  
@@ -132,8 +133,7 @@ typedef struct tagFIS_PIO_SETUP
 	uint8_t  rsv4[2];	// Reserved
 } FIS_PIO_SETUP;
 
-typedef struct tagFIS_DMA_SETUP
-{
+typedef struct tagFIS_DMA_SETUP {
 	// DWORD 0
 	uint8_t  fis_type;	// FIS_TYPE_DMA_SETUP
  
@@ -143,29 +143,28 @@ typedef struct tagFIS_DMA_SETUP
 	uint8_t  i:1;		// Interrupt bit
 	uint8_t  a:1;            // Auto-activate. Specifies if DMA Activate FIS is needed
  
-        uint8_t  rsved[2];       // Reserved
+	uint8_t  rsved[2];       // Reserved
  
 	//DWORD 1&2
  
-        uint64_t DMAbufferID;    // DMA Buffer Identifier. Used to Identify DMA buffer in host memory.
-                                 // SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
- 
-        //DWORD 3
-        uint32_t rsvd;           //More reserved
- 
-        //DWORD 4
-        uint32_t DMAbufOffset;   //Byte offset into buffer. First 2 bits must be 0
- 
-        //DWORD 5
-        uint32_t TransferCount;  //Number of bytes to transfer. Bit 0 must be 0
- 
-        //DWORD 6
-        uint32_t resvd;          //Reserved
+	uint64_t DMAbufferID;    // DMA Buffer Identifier. Used to Identify DMA buffer in host memory.
+								// SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
+
+	//DWORD 3
+	uint32_t rsvd;           //More reserved
+
+	//DWORD 4
+	uint32_t DMAbufOffset;   //Byte offset into buffer. First 2 bits must be 0
+
+	//DWORD 5
+	uint32_t TransferCount;  //Number of bytes to transfer. Bit 0 must be 0
+
+	//DWORD 6
+	uint32_t resvd;          //Reserved
  
 } FIS_DMA_SETUP;
  
-typedef volatile struct tagHBA_PORT
-{
+typedef volatile struct tagHBA_PORT {
 	uint32_t clb;		// 0x00, command list base address, 1K-byte aligned
 	uint32_t clbu;		// 0x04, command list base address upper 32 bits
 	uint32_t fb;		// 0x08, FIS base address, 256-byte aligned
@@ -187,8 +186,7 @@ typedef volatile struct tagHBA_PORT
 	uint32_t vendor[4];	// 0x70 ~ 0x7F, vendor specific
 } HBA_PORT;
 
-typedef volatile struct tagHBA_MEM
-{
+typedef volatile struct tagHBA_MEM {
 	// 0x00 - 0x2B, Generic Host Control
 	uint32_t cap;		// 0x00, Host capability
 	uint32_t ghc;		// 0x04, Global host control
@@ -225,8 +223,7 @@ typedef struct tagFIS_SET_DEVICE_BITS {
     uint8_t error;
 } FIS_DEV_BITS;
 
-typedef volatile struct tagHBA_FIS
-{
+typedef volatile struct tagHBA_FIS {
 	// 0x00
 	FIS_DMA_SETUP	dsfis;		// DMA Setup FIS
 	uint8_t         pad0[4];
@@ -249,8 +246,7 @@ typedef volatile struct tagHBA_FIS
 	uint8_t   	rsv[0x100-0xA0];
 } HBA_FIS;
 
-typedef struct tagHBA_CMD_HEADER
-{
+typedef struct tagHBA_CMD_HEADER {
 	// DW0
 	uint8_t  cfl:5;		// Command FIS length in DWORDS, 2 ~ 16
 	uint8_t  a:1;		// ATAPI
@@ -277,8 +273,7 @@ typedef struct tagHBA_CMD_HEADER
 	uint32_t rsv1[4];	// Reserved
 } HBA_CMD_HEADER;
 
-typedef struct tagHBA_PRDT_ENTRY
-{
+typedef struct tagHBA_PRDT_ENTRY {
 	uint32_t dba;		// Data base address
 	uint32_t dbau;		// Data base address upper 32 bits
 	uint32_t rsv0;		// Reserved
@@ -289,8 +284,7 @@ typedef struct tagHBA_PRDT_ENTRY
 	uint32_t i:1;		// Interrupt on completion
 } HBA_PRDT_ENTRY;
 
-typedef struct tagHBA_CMD_TBL
-{
+typedef struct tagHBA_CMD_TBL {
 	// 0x00
 	uint8_t  cfis[64];	// Command FIS
  
@@ -305,17 +299,6 @@ typedef struct tagHBA_CMD_TBL
 } HBA_CMD_TBL;
 
 void probe_port(HBA_MEM *abar);
-
-extern HBA_MEM *abar;
-extern uint64_t *pages_for_ahci_start;
-extern uint64_t *pages_for_ahci_end;
-extern uint64_t *pages_for_ahci_start_virtual;
-extern uint64_t *pages_for_ahci_end_virtual;
-
-extern void mem_map_ahci(uint64_t abar_tmp);
-int read_ahci(HBA_PORT *port, uint32_t startl, uint32_t starth, uint32_t count, uint64_t buf);
-int write_ahci(HBA_PORT *port, uint32_t startl, uint32_t starth, uint32_t count, uint64_t buf);
-char fs_buf[1024];
 uint64_t checkAllBuses(void) ;
 uint64_t find_ahci(void);
 void _ahci_init(void);

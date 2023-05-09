@@ -1,54 +1,37 @@
 #include "ahci.h"
-#include "common.h"
-#include "kmem.h"
-#include "lib.h"
-#include "support.h"
-#include "x86arch.h"
 
-// PCI configuration address register offset
-#define PCI_CONFIG_ADDRESS 0xCF8
-// PCI configuration data register offset
-#define PCI_CONFIG_DATA 0xCFC
+#define PCI_CONFIG_ADDRESS 0xCF8	// PCI configuration address register offset
+#define PCI_CONFIG_DATA 0xCFC		// PCI configuration data register offset
 
 #define	SATA_SIG_ATA	0x00000101	// SATA drive
 #define	SATA_SIG_ATAPI	0xEB140101	// SATAPI drive
 #define	SATA_SIG_SEMB	0xC33C0101	// Enclosure management bridge
 #define	SATA_SIG_PM		0x96690101	// Port multiplier
  
-#define AHCI_DEV_NULL 0
-#define AHCI_DEV_SATA 1
-#define AHCI_DEV_SEMB 2
-#define AHCI_DEV_PM 3
-#define AHCI_DEV_SATAPI 4
+#define AHCI_DEV_NULL		0
+#define AHCI_DEV_SATA 		1
+#define AHCI_DEV_SEMB 		2
+#define AHCI_DEV_PM 		3
+#define AHCI_DEV_SATAPI 	4
  
-#define HBA_PORT_IPM_ACTIVE 1
-#define HBA_PORT_DET_PRESENT 3
+#define HBA_PORT_IPM_ACTIVE 	1
+#define HBA_PORT_DET_PRESENT 	3
 
-#define AHCI_BASE   	0x400000    // 4M
-#define HBA_PxCMD_ST    0x0001  // ST - Start (command processing)
-#define HBA_PxCMD_SUD   0x0002  // SUD - Spin-Up Device
-#define HBA_PxCMD_FRE   0x0010  // FRE - FIS Receive Enable
-#define HBA_PxCMD_FR    0x4000  // FR - FIS receive Running
-#define HBA_PxCMD_CR    0x8000  // CR - Command list Running
+#define HBA_PxCMD_ST   	 	0x0001  // ST - Start (command processing)
+#define HBA_PxCMD_FRE   	0x0010  // FRE - FIS Receive Enable
+#define HBA_PxCMD_FR    	0x4000  // FR - FIS receive Running
+#define HBA_PxCMD_CR    	0x8000	// CR - Command list Running
 
-#define HBA_PxIE_DHRE	
-#define HBA_PxIE_PSE
-#define HBA_PxIE_DSE
-#define HBA_PxIE_SDBE
-#define HBA_PxIE_UFE
-#define HBA_PxIE_DPE
-#define HBA_PxIE		0x3F
+#define HBA_PxIS_PSS		0x0002	// 
+#define HBA_PxIS_DPS		0x0020	// 
+#define HBA_PxIS_TFES   0x40000000  // TFES - Task File Error Status
 
-#define HBA_PxIS_PSS	0x0002
-#define HBA_PxIS_DPS	0x0020
+#define ATA_DEV_BUSY 	0x80
+#define ATA_DEV_DRQ 	0x08
 
-#define ATA_DEV_BUSY 0x80
-#define ATA_DEV_DRQ 0x08
-
-#define HBA_PxIS_TFES   (1 << 30)       /* TFES - Task File Error Status */
-#define ATA_CMD_READ_DMA_EX     0x25
-#define ATA_CMD_WRITE_DMA_EX     0x35
-#define ATA_CMD_IDENTIFY        0xEC
+#define ATA_CMD_READ_DMA_EX		0x25	// Read Command
+#define ATA_CMD_WRITE_DMA_EX	0x35	// Write Command
+#define ATA_CMD_IDENTIFY        0xEC	// Identify Command
 
 static inline void outl(uint16_t port, uint32_t val) {
 
@@ -103,7 +86,8 @@ uint64_t find_ahci() {
 
             if (vendor_id == 0x8086 && class == 0x01 && subclass == 0x06) {
                 // BAR5 is HBA register location
-				__cio_printf("DEVICE[%x] from VENDOR[%x] with CLASS[%x] and SUBCLASS[%x]\n", device_id, vendor_id, class, subclass);
+				__cio_printf("DEVICE[%x] from VENDOR[%x] with CLASS[%x] and SUBCLASS[%x]\n",
+					device_id, vendor_id, class, subclass);
 				__cio_printf("found on BUS[%d], SLOT[%d]\n", bus, slot);
 
                 return read_pci_config(bus, slot, 0, 0x24);                 
@@ -115,8 +99,7 @@ uint64_t find_ahci() {
 // Start command engine
 void start_cmd(HBA_PORT *port) {
 	// Wait until CR (bit15) is cleared
-	while (port->cmd & HBA_PxCMD_CR)
-		;
+	while (port->cmd & HBA_PxCMD_CR);
  
 	// Set FRE (bit4) and ST (bit0)
 	port->cmd |= HBA_PxCMD_FRE;
@@ -132,8 +115,7 @@ void stop_cmd(HBA_PORT *port) {
 	port->cmd &= ~HBA_PxCMD_FRE;
  
 	// Wait until FR (bit14), CR (bit15) are cleared
-	while(1)
-	{
+	while(1) {
 		if (port->cmd & HBA_PxCMD_FR)
 			continue;
 		if (port->cmd & HBA_PxCMD_CR)
@@ -167,8 +149,7 @@ void port_rebase(HBA_PORT *port, int portno) {
 	void *cmd_alloc = _km_page_alloc(2);
 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)(port->clb);
 
-	for (int i=0; i<32; i++)
-	{
+	for (int i=0; i<32; i++) {
 		cmdheader[i].prdtl = 8;	// 8 prdt entries per command table
 					// 256 bytes per command table, 64+16+48+16*8
 		// Command table offset: 40K + 8K*portno + cmdheader_index*256
@@ -180,8 +161,7 @@ void port_rebase(HBA_PORT *port, int portno) {
 }
  
 //Find a free command list slot
-int find_cmdslot(HBA_PORT *port, int num_of_slots)
-{
+int find_cmdslot(HBA_PORT *port, int num_of_slots) {
 	// If not set in SACT and CI, the slot is free
 	uint32_t slots = (port->sact | port->ci);
 	for (int i=0; i < num_of_slots; i++)
@@ -196,6 +176,7 @@ int find_cmdslot(HBA_PORT *port, int num_of_slots)
 
 void check_WD(HBA_MEM *abar, int portno) {
     HBA_PORT *port = &abar->ports[portno];
+
     port->is = 0xffffffff;		// Clear pending interrupt bits
 	port->ie = 0xffffffff;		// Enable all interrupts
 
@@ -210,16 +191,13 @@ void check_WD(HBA_MEM *abar, int portno) {
 	cmdheader += slot;
     
 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(uint32_t);		// Command FIS size (H2D is 4 dwords)
-	//cmdheader->w = 1;		// host to device
 	cmdheader->prdtl = 1;	// PRDT entries count
  
 	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)(cmdheader->ctba);
-	//__memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
- 
 
 	void * tmpptr = _km_slice_alloc();
 	uint32_t addr = (uint32_t)tmpptr;
-	//__cio_printf("%d\n%d", addr, (uint32_t)ptr);
+
 	cmdtbl->prdt_entry[0].dba = addr;
 	cmdtbl->prdt_entry[0].dbc = 0x1FF;
 	cmdtbl->prdt_entry[0].i = 1;
@@ -234,25 +212,25 @@ void check_WD(HBA_MEM *abar, int portno) {
 	cmdfis->c = 1;	// Command
     
 
-	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
-	{
+	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000) {
 		spin++;
 	}
-	if (spin == 1000000)
-	{
+
+	if (spin == 1000000) {
 		__cio_printf("Port is hung\n");
 		return;
 	}
 
-	port->ci = 1<<slot; //issue command
+	// Issue command
+	port->ci = 1 << slot; 
 
-	while (1)
-	{
-		if ((port->is & HBA_PxIS_DPS) && (port->is & HBA_PxIS_PSS) && ((port->ci & (1<<slot)) == 0)){
+	while (1) {
+		// Command succeeds
+		if ((port->is & HBA_PxIS_DPS) && (port->is & HBA_PxIS_PSS) && ((port->ci & (1<<slot)) == 0)) {
 			break;
 		}
-		if (port->is & HBA_PxIS_TFES)	// Task file error
-		{
+		// Task file error
+		if (port->is & HBA_PxIS_TFES) {	
 			__cio_printf("Read disk error\n");
 			return;
 		}
@@ -279,8 +257,7 @@ static int check_type(HBA_PORT *port) {
 	if (ipm != HBA_PORT_IPM_ACTIVE)
 		return AHCI_DEV_NULL;
  
-	switch (port->sig)
-	{
+	switch (port->sig) {
 	case SATA_SIG_ATAPI:
 		return AHCI_DEV_SATAPI;
 	case SATA_SIG_SEMB:
@@ -296,43 +273,30 @@ void probe_port(HBA_MEM *abar) {
 	abar->ghc |= 1<<31;	//AHCI Enable
 	abar->ghc |= 1<<1;	//Interrupts Enable
 
-	
 	// Search disk in implemented ports
 	uint32_t pi = abar->pi;
 	int i = 0;
 
-	while (i<32)
-	{
-		if (pi & 1)
-		{
+	while (i<32) {
+		if (pi & 1) {
 			int dt = check_type(&abar->ports[i]);
-			if (dt == AHCI_DEV_SATA)
-			{
+
+			if (dt == AHCI_DEV_SATA) {
 				__cio_printf("\nSATA drive found at port %d\n", i);
 				
                 port_rebase(&abar->ports[i], i);
                 check_WD(abar, i);
-			}
-			else if (dt == AHCI_DEV_SATAPI)
-			{
+			} else if (dt == AHCI_DEV_SATAPI) {
 				__cio_printf("SATAPI drive found at port %d\n", i);
-			}
-			else if (dt == AHCI_DEV_SEMB)
-			{
+			} else if (dt == AHCI_DEV_SEMB)	{
 				__cio_printf("SEMB drive found at port %d\n", i);
-			}
-			else if (dt == AHCI_DEV_PM)
-			{
+			} else if (dt == AHCI_DEV_PM) {
 				__cio_printf("PM drive found at port %d\n", i);
-			}
-			else
-			{
+			} else {
 				__cio_printf("No drive found at port %d\n", i);
 			}
 		}
- 
 		pi >>= 1;
 		i ++;
 	}
 }
- 
