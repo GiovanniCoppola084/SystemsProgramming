@@ -1,11 +1,18 @@
+/**
+* 	File: ahci.h
+* 	Description: AHCI Driver implementation
+* 
+* 	@author Greg Leitkowski
+*
+*	Structures and partial function code sourced from https://wiki.osdev.org/AHCI  
+*/
+
 #include "common.h"
 #include "cio.h"
 #include "kmem.h"
 #include "lib.h"
 #include "support.h"
 #include "x86arch.h"
-
-// HBA and FIS structs from https://wiki.osdev.org/AHCI
 
 typedef enum {
 	FIS_TYPE_REG_H2D	= 0x27,	// Register FIS - host to device

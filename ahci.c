@@ -1,3 +1,14 @@
+/**
+* 	File: ahci.c
+* 	Description: AHCI Driver implementation
+* 
+* 	@author Greg Leitkowski
+* 
+* 	Description: File searches PCI bus for AHCI Controller, then explores each implemented port
+*                to determine if the drive is a SATA Drive and if so, issues ATA_CMD_IDENTIFY and
+*				 prints first two characters of its model number
+*/
+
 #include "ahci.h"
 
 #define PCI_CONFIG_ADDRESS 0xCF8	// PCI configuration address register offset
@@ -22,8 +33,8 @@
 #define HBA_PxCMD_FR    	0x4000  // FR - FIS receive Running
 #define HBA_PxCMD_CR    	0x8000	// CR - Command list Running
 
-#define HBA_PxIS_PSS		0x0002	// 
-#define HBA_PxIS_DPS		0x0020	// 
+#define HBA_PxIS_PSS		0x0002	// PSS - PIO Setup FIS Interrupt
+#define HBA_PxIS_DPS		0x0020	// DPS - Descriptor Processed
 #define HBA_PxIS_TFES   0x40000000  // TFES - Task File Error Status
 
 #define ATA_DEV_BUSY 	0x80
