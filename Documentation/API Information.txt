@@ -1,0 +1,172 @@
+﻿Giovanni Coppola, Greg Leitkowski, Ezequiel Salas
+CSCI-452
+
+
+file_template.h:
+
+
+uint32_t init_inodes(FileSystem_s *fs, uint32_t current_address)
+	Initialize all of the inodes into memory. This will loop through the appropriate amount of inodes and assign 	them to the linked list of inodes in the file system. Returns the address at the end of the inodes linked 	list, so the data blocks can start there.
+
+uint32_t init_data_blocks(FileSystem_s *fs, uint32_t current_address)
+	Initialize all of the data blocks into memory. This will loop through the appropriate amount of data blocks 	and assign them to the linked list of data blocks in the file system. Returns the address at the end of the 	data blocks linked list so we know where the file system ends in memory.
+
+FileSystem_s* file_system_init(void)
+	Calls the init functions for both the inodes and the data blocks, as well as initializes the counts for the 	number of free pointers, and sets the current and previous inode of the system to NULL. Returns the 	completely initialized file system at the end.
+
+Inode_s *create_inode(FileSystem_s *fs, Inode_s *inode, char  name[SIZE_OF_DIRECTORY_NAME])
+	Take a pointer to memory off the head of the free inode list. Set the data pointer to be a new inode that 	contains no pointers within the direct array. Also sets the number of active pointers to be zero since we 	don’t have any. The name of the inode will also gets set.
+
+File_s *create_data_block(FileSystem_s *fs, Inode_s *inode, bool_t is_direct, char name[MAX_NAME_LENGTH], char block[SIZE_OF_DATA_BLOCK_DEC], uint8_t index)
+	Take a pointer to memory off the head of the free data block list. This will set the data block the user 	enters in, so the file can contain something. This will also set the basic other members like the name of 	the block and check to make sure the user is actually entering it into a direct pointer, and not one to an 	inode.
+
+void inode_read (FIleSystem_s *fs, Inode_s *inode, uint32_t inode_number)
+	Print out the data block information to the screen that the user wants. If the data block at the pointer is 	NULL, then it will panic. So make sure the data block being read has been initialized.
+
+void inode_write(FileSystem_s *fs, Inode_s *inode, uint32_t inode_number, char *block)
+	Ask the user for a new data block to enter. This will overwrite the previous data block that was already 	there. 
+
+void inode_delete_data (FileSystem_s *fs, Inode_s *inode, uint32_t inode_number)
+	This function will replace the first character in the data block with a null character so it appears as 	though the string is empty when printing.
+
+void delete_inode_pointer (FileSystem_s *fs, Inode_s *inode, uint8_t index, char name{MAX_NAME_LENGTH)
+	Loop through the used_nodes list in memory and search for the inode that matches the name entered. If it 	does not find it, it will panic. If it does, it will put the pointer back in the free list and free the 	pointer from the used list so it does not see it anymore.
+
+void delete_data_block_pointer (FileSystem_s *fs, Inode_s *inode, uint8_t index, char name[MAX_NAME_LENGTH])
+	Loop through the used_blocks list in memory and search for the data block that matches the name entered. If 	it does not find it, it will panic. If it does, it will put the pointer back in the free list and free the 	pointer from the used list so it does not see it anymore.
+
+void delete_pointer_in_inode (FileSystem_s *fs, Inode_s *inode, uint8_t index, bool_t is_direct, char name[MAX_NAME_LENGTH])
+	This will call the correct delete function based on the parameters based in. If you want to delete an inode, 	call it with false as the bool and 0 as the index. Anything else will delete a data block pointer. Of course 	this only works if the pointers are valid.
+
+Inode_s *move_in_directory (FileSytem_s *fs, Inode_s *inode)
+	Move into the next working directory if the first pointer in the inode is valid. Error out otherwise.
+
+
+void mov_out_directory (FileSystem_s *fs)
+	This function is not being used currently, but it will set the current pointer to previous, and the previous 	pointer to NULL since we don’t have a linked list of previous directories right now.
+
+
+void print_directory (FileSystem_s *fs, Inode_s *inode)
+	Print out the current information of the inode such as the listing of the pointers. It will print NULL if it 	is not a valid pointer. If it is, it will print what type of pointer it is and its name. It will also print 	the number of active pointers in the inode.
+        
+void print_file_system_info (FileSystem_s *fs)
+	Print the information of the file system in the number of pointers in use, and the number not in use for 	both the inodes and data blocks separately. 
+	file_shell.h:
+
+void read_line (char *buffer, uint32_t length, char *prompt)
+	Read in a line of text from the terminal that the user entered. The data will be placed into the buffer so 	it can be used later.
+
+int enter_index (char index_str[3])
+	Enter an index as a string and return the converted string as an int. It will only allow for 2 digit numbers 	as the index, since the inodes only have 15 pointers per.
+
+void is_fs_initialized(void)
+	Function to return if the file system has been initialized. If it is not, it will throw a kernel panic.
+
+void is_inode (void)
+	This will panic if the first index in the inode is not an inode.
+
+void print_menu (void)
+	Ask the user to enter a character at a time for a specific command to use the operating system. For example, 	the user can enter an i to initialize the file system, or an r to read from a data block. This will keep 	going until the user presses x to exit, until there is a panic, or until the system itself is turned off.
+
+
+pio.h
+
+int process(char buffer[])
+        Not Implemented. Process keyboard inputs and send it to the parallel port.
+        Perform necessary timing actions to print everything.
+
+int  establish_handshake(void)
+        Communicate via the second I/O port for the parallel port.
+        Wait until BUSY signal or PAPER OUT is zero and then send test bytes to printer.
+        If the ERROR signal is received output status code and return
+
+int pio_init(void)
+        Calls the appropriate functions to initialize a connection
+        to printer. Afterwards if it works it would call a process function to
+        handle keyboard input to send to the printer
+
+
+ahci.h
+
+int find_cmdslot(HBA_PORT *port, int num_of_slots)
+	returns first available command slot in port->ci
+
+void check_WD(HBA_MEM *abar, int portno)
+	Issues ATA_CMD_IDENTIFY to port number portno in abar
+	Prints out first two characters of model number
+
+void start_cmd(HBA_PORT *port)
+	Enables command processing on a port
+
+void stop_cmd(HBA_PORT *port)
+	Disables command processing on a port
+
+void port_rebase(HBA_PORT *port, int portno)
+	Calls stop_cmd so no command processing interfered with
+	Allocates space in memory data structures used by port commands for given port
+	Command list on 1K aligned, FIS on 256B aligned, command table 8K aligned
+	Calls start_cmd so future commands can be called
+
+int check_type(HBA_PORT *port)
+	Determines type of drive on a port
+	SATA, ATAPI, SEMB, PM, None
+
+void probe_port(HBA_MEM *abar)
+	Enables AHCI mode and interrupts
+	For each implemented port, determine if it is SATA. If yes, call port_rebase, then call check_WD
+
+uint32_t inl(uint16_t port)
+	Implementation of inl assembly call
+	Copies 32 bit value from I/O port
+
+void outl(uint16_t port, uint32_t val)
+	Implementation of outl assembly call
+	Copies 32b bit value to I/O port
+
+uint32_t read_pci_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
+	Reads PCI Configuration space register of device on bus, in slot, with func at specified offset
+
+uint64_t find_ahci(void)
+	Enumerate PCI Bus to find AHCI controller
+	Returns HBA memory pointer in BAR5 register
+
+void _ahci_isr(int vector, int code)
+	Interrupt routine for AHCI interrupts
+	Prints "AHCI Interrupt"
+
+void _ahci_init(void)
+	Calls _ahci_isr()
+	Calls find_ahci()
+	Calls probe_port(), passing in return value from find_ahci()
+
+
+syscalls.c
+
+static void _sys_exit( Pcb *pcb )
+        terminate calling process
+
+static void _sys_spawn( Pcb *pcb )
+        verifies a new process can be spawned
+        Allocates pcb and stack
+        Add process to process table
+        schedule child
+
+static void _sys_read( Pcb *pcb )
+        read into buffer from a stream
+        Returns data from stream and number of bytes
+        
+static void _sys_write( Pcb *pcb )
+        Write from a passed in buffer into a passed in channel stream with given length
+        Returns number of bytes written or error code
+
+static void _sys_sleep( Pcb *pcb )
+        Sleep current process for given amount of time
+
+static void _sys_kill( Pcb *pcb )
+        Find specified process
+        exit if running, blocked, or waiting and mark as killed
+        Return status of kill attempt
+
+static void _sys_waitpid( Pcb *pcb )
+        Wait on another process id
+        Return pid of specified child and exit status

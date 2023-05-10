@@ -330,7 +330,7 @@ uint32_t read_pci_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset
  * @brief  Enumerate PCI bus to find AHCI Controller
  * @retval ABAR - Pointer to AHCI memory space
  */
-uint64_t find_ahci() {
+uint64_t find_ahci(void) {
     uint8_t bus, slot;
     uint16_t vendor_id, device_id;
 
@@ -370,7 +370,7 @@ void _ahci_isr(int vector, int code) {
  * @brief  Driving method called from kernel to initialize AHCI functionality
  * @retval None
  */
-void _ahci_init() {
+void _ahci_init(void) {
 	__install_isr(INT_VEC_AHCI, _ahci_isr);
     
 	uint32_t abar = find_ahci();
